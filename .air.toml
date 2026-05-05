@@ -1,0 +1,7 @@
+root = "."
+
+env_file = [".env"]
+
+[build]
+cmd = "go build -o ./bin/ ./cmd/api"
+entrypoint = ["./bin/api"]
