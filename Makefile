@@ -22,7 +22,7 @@ confirm:
 ## run/api: run the cmd/api application
 .PHONY: run/api
 run/api:
-	@go run ./cmd/api
+	@go run ./cmd/api/ -db-dsn ${DSN}
 
 ## db/migraation/new name=$1: create a new up/down migration files with the given name
 .PHONY: db/migration/new
@@ -43,6 +43,8 @@ db/migratoin/up: confirm
 build/api:
 	@echo "Building cmd/api application..."
 	@go build -o bin/api ./cmd/api
+	
+
 
 
 
