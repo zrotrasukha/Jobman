@@ -17,8 +17,8 @@ type config struct {
 	env  string
 	db   struct {
 		dsn          string
-		maxOpenConns int32
-		maxIdleConns int32
+		maxOpenConns int
+		minIdleConns int
 		maxIdleTime  time.Duration
 	}
 }
@@ -35,8 +35,8 @@ func openDB(cfg config) (*pgxpool.Pool, error) {
 		return nil, err
 	}
 
-	poolCfg.MaxConns = cfg.db.maxOpenConns
-	poolCfg.MinConns = cfg.db.maxIdleConns
+	poolCfg.MaxConns = int32(cfg.db.maxOpenConns)
+	poolCfg.MinIdleConns = int32(cfg.db.minIdleConns)
 	poolCfg.MaxConnIdleTime = cfg.db.maxIdleTime
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), poolCfg)
@@ -61,7 +61,11 @@ func main() {
 
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "environment", "Environment (development|staging|production)")
+
 	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("DSN"), "PostgreSQL DSN")
+	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
+	flag.IntVar(&cfg.db.minIdleConns, "db-min-idle-conns", 25, "PostgreSQL min idle connections")
+	flag.DurationVar(&cfg.db.maxIdleTime, "db-max-idle-time", 15*time.Minute, "PostgreSQL max connection idle time")
 
 	flag.Parse()
 
@@ -82,7 +86,7 @@ func main() {
 
 	err = app.serve()
 	if err != nil {
-		app.logger.Error(err.Error())
+		app.logger.Error(err.Error(), "happened", "here")
 		os.Exit(1)
 	}
 }
