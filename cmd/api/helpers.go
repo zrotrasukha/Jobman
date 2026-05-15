@@ -5,18 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"strings"
 )
 
 type envelop map[string]any
 
-func WriteJSON(w http.ResponseWriter, status int, data any) error {
+func WriteJSON(w http.ResponseWriter, status int, data any, headers http.Header) error {
 
 	b, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		return err
 	}
+
+	maps.Copy(w.Header(), headers)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
