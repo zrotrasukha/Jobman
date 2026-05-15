@@ -1,0 +1,31 @@
+package main
+
+import "net/http"
+
+func (app *application) logError(r *http.Request, err error) {
+	var (
+		method = r.Method
+		url    = r.URL.String()
+	)
+
+	app.logger.Error(err.Error(), "method", method, "url", url)
+}
+
+func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, message any) {
+	env := envelop{"error": message}
+
+	err := WriteJSON(w, status, env, nil)
+	if err != nil {
+		app.logError(r, err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func (app *application) serverErrResponse(w http.ResponseWriter, r *http.Request) {
+	message := "the server encountered a problem and could not process your request"
+	app.errorResponse(w, r, http.StatusInternalServerError, message)
+}
+
+func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
+	app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+}
