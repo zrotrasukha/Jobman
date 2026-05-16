@@ -72,7 +72,7 @@ func ReadJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	return nil
 }
 
-func ReadParamId(r *http.Request) (int64, error) {
+func ReadParamID(r *http.Request) (int64, error) {
 	params := httprouter.ParamsFromContext(r.Context())
 	id := params.ByName("id")
 
