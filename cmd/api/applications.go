@@ -1,21 +1,19 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
-	"github.com/zrotrasukha/GO---Job-Application-Manager/internal/data"
+	"github.com/zrotrasukha/jobman/internal/data"
 )
 
 func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Company_name      string `json:"company_name"`
-		RoleTitle         string `json:"role_title"`
-		Status            string `json:"status"`
-		AppliedAt         string `json:"applied_at"`
-		UpdatedAt         string `json:"updated_at"`
-		LastCommunication string `json:"last_communication"`
-		Notes             string `json:"notes"`
+		Company_name string      `json:"company_name"`
+		RoleTitle    string      `json:"role_title"`
+		Status       data.Status `json:"status"`
+		Notes        string      `json:"notes"`
 	}
 
 	err := ReadJSON(w, r, &input)
@@ -25,13 +23,10 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 	}
 
 	var application = &data.Application{
-		CompanyName:       input.Company_name,
-		RoleTitle:         input.RoleTitle,
-		Status:            input.Status,
-		AppliedAt:         input.AppliedAt,
-		UpdatedAt:         input.UpdatedAt,
-		LastCommunication: input.LastCommunication,
-		Notes:             input.Notes,
+		CompanyName: input.Company_name,
+		RoleTitle:   input.RoleTitle,
+		Status:      input.Status,
+		Notes:       input.Notes,
 	}
 
 	err = app.models.Application.Insert(application)
@@ -50,11 +45,32 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 }
 
 func (app *application) GetApplicationsHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "get applications")
+	fmt.Println("all the applications are here")
 }
 
 func (app *application) GetApplicationHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "get application")
+	id, err := ReadParamID(r)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	application, err := app.models.Application.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+			return
+		default:
+			app.serverErrResponse(w, r)
+		}
+	}
+
+	err = WriteJSON(w, http.StatusOK, envelop{"application": application}, nil)
+	if err != nil {
+		app.serverErrResponse(w, r)
+	}
+
 }
 
 func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.Request) {

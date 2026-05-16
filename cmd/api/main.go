@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/zrotrasukha/GO---Job-Application-Manager/internal/data"
+	"github.com/zrotrasukha/jobman/internal/data"
 )
 
 type config struct {

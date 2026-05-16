@@ -1,4 +1,4 @@
-module github.com/zrotrasukha/GO---Job-Application-Manager
+module github.com/zrotrasukha/jobman
 
 go 1.26.1
 

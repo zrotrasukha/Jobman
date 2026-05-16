@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/zrotrasukha/GO---Job-Application-Manager/internal/assert"
+	"github.com/zrotrasukha/jobman/internal/assert"
 )
 
 func TestHealth(T *testing.T) {
