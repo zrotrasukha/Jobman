@@ -47,5 +47,4 @@ func (m ApplicationModel) Insert(jobApp *Application) error {
 func ValidateApplication(v *validator.Validator, jobApp *Application) {
 	v.CheckField(jobApp.CompanyName != "", "company_name", "must be provided")
 	v.CheckField(len(jobApp.CompanyName) <= 200, "company_name", "must not be more than 200 bytes long")
-
 }

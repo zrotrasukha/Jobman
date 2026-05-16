@@ -7,7 +7,10 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"strconv"
 	"strings"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 type envelop map[string]any
@@ -67,4 +70,16 @@ func ReadJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 		return errors.New("body must only contain a single JSON value")
 	}
 	return nil
+}
+
+func ReadParamId(r *http.Request) (int64, error) {
+	params := httprouter.ParamsFromContext(r.Context())
+	id := params.ByName("id")
+
+	intID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil || intID < 1 {
+		return 0, errors.New("invalid id parameter")
+	}
+
+	return intID, nil
 }
