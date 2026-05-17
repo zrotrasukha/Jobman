@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,6 +30,7 @@ type application struct {
 	config config
 	logger *slog.Logger
 	models data.Models
+	wg     sync.WaitGroup
 }
 
 func openDB(cfg config) (*pgxpool.Pool, error) {
@@ -91,11 +93,12 @@ func main() {
 		config: cfg,
 		logger: logger,
 		models: data.NewModels(db),
+		wg:     sync.WaitGroup{},
 	}
 
 	err = app.serve()
 	if err != nil {
-		app.logger.Error(err.Error(), "happened", "here")
+		app.logger.Error(err.Error())
 		os.Exit(1)
 	}
 }
