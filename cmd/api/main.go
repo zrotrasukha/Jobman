@@ -12,6 +12,8 @@ import (
 	"github.com/zrotrasukha/jobman/internal/data"
 )
 
+var version = "1.0.0"
+
 type config struct {
 	port int
 	env  string
@@ -67,7 +69,14 @@ func main() {
 	flag.IntVar(&cfg.db.minIdleConns, "db-min-idle-conns", 25, "PostgreSQL min idle connections")
 	flag.DurationVar(&cfg.db.maxIdleTime, "db-max-idle-time", 15*time.Minute, "PostgreSQL max connection idle time")
 
+	displayVersion := flag.Bool("version", false, "Display version and exit")
+
 	flag.Parse()
+
+	if *displayVersion {
+		log.Printf("Version:\t%s\n", version)
+		os.Exit(0)
+	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
