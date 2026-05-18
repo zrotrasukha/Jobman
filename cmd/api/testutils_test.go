@@ -8,14 +8,14 @@ import (
 	"testing"
 )
 
-func newTestApplication() *application {
+func newTestApplication(t *testing.T) *application {
 
 	cfg := config{
 		env: "test",
 	}
 	return &application{
 		config: cfg,
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger: slog.New(slog.NewTextHandler(t.Output(), nil)),
 	}
 }
 
@@ -23,8 +23,8 @@ type testServer struct {
 	*httptest.Server
 }
 
-func newTestServer() *testServer {
-	app := newTestApplication()
+func newTestServer(t *testing.T) *testServer {
+	app := newTestApplication(t)
 	ts := httptest.NewServer(app.routes())
 	return &testServer{ts}
 }
