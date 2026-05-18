@@ -52,6 +52,10 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 				return fmt.Errorf("invalid value for field %q (at character %d)", unmarshalTypeError.Field, unmarshalTypeError.Offset)
 			}
 			return fmt.Errorf("invalid JSON (at character %d)", unmarshalTypeError.Offset)
+
+		case strings.HasPrefix(err.Error(), "json: unknown field "):
+			fieldname := strings.TrimPrefix(err.Error(), "json: unknown field ")
+			return fmt.Errorf("unknown field %s", fieldname)
 		case strings.Contains(err.Error(), "http: request body too large"):
 			return fmt.Errorf("body must not be larger than %d bytes", MAX_BYTESIZE)
 		case errors.Is(err, io.ErrUnexpectedEOF):
