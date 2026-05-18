@@ -2,16 +2,27 @@ package main
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/zrotrasukha/jobman/internal/assert"
 )
 
-func TestHealth(T *testing.T) {
-	ts := newTestServer()
+func TestHealthcheck(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Close()
 
-	status, body := ts.Get(T, "/v1/healthcheck")
+	app := newTestApplication(t)
 
-	assert.Equal(T, status, http.StatusOK)
-	assert.Equal(T, body, "Status: OK,\nEnvironment: test")
+	expected := envelop{
+		"status":      "available",
+		"environment": app.config.env,
+		"version":     version,
+	}
+
+	status, body := ts.Get(t, "/v1/healthcheck")
+	body = strings.TrimSpace(body)
+
+	assert.Equal(t, status, http.StatusOK)
+	assert.EqualJSON(t, []byte(body), expected)
 }
