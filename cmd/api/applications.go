@@ -16,7 +16,7 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 		Notes        string      `json:"notes"`
 	}
 
-	err := ReadJSON(w, r, &input)
+	err := app.readJSON(w, r, &input)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -38,7 +38,7 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 	header := make(http.Header)
 	header.Set("Location", fmt.Sprintf("/v1/applications/%d", application.ID))
 
-	err = WriteJSON(w, http.StatusCreated, envelop{"application": application}, header)
+	err = app.writeJSON(w, http.StatusCreated, envelop{"application": application}, header)
 	if err != nil {
 		app.serverErrResponse(w, r)
 	}
@@ -49,7 +49,7 @@ func (app *application) GetApplicationsHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (app *application) GetApplicationHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := ReadParamID(r)
+	id, err := app.readParamID(r)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -66,7 +66,7 @@ func (app *application) GetApplicationHandler(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	err = WriteJSON(w, http.StatusOK, envelop{"application": application}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelop{"application": application}, nil)
 	if err != nil {
 		app.serverErrResponse(w, r)
 	}

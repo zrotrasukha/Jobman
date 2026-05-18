@@ -15,7 +15,7 @@ import (
 
 type envelop map[string]any
 
-func WriteJSON(w http.ResponseWriter, status int, data any, headers http.Header) error {
+func (app *application) writeJSON(w http.ResponseWriter, status int, data any, headers http.Header) error {
 
 	b, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
@@ -31,7 +31,7 @@ func WriteJSON(w http.ResponseWriter, status int, data any, headers http.Header)
 	return nil
 }
 
-func ReadJSON(w http.ResponseWriter, r *http.Request, dst any) error {
+func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	MAX_BYTESIZE := 1_048_576
 	r.Body = http.MaxBytesReader(w, r.Body, int64(MAX_BYTESIZE))
 
@@ -72,7 +72,7 @@ func ReadJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	return nil
 }
 
-func ReadParamID(r *http.Request) (int64, error) {
+func (app *application) readParamID(r *http.Request) (int64, error) {
 	params := httprouter.ParamsFromContext(r.Context())
 	id := params.ByName("id")
 
