@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/julienschmidt/httprouter"
 	"github.com/zrotrasukha/jobman/internal/assert"
 )
 
@@ -115,5 +117,69 @@ func TestReadJSON(t *testing.T) {
 	}
 }
 
-//
-//TODO: Write test for readParamID
+func TestReadParamID(t *testing.T) {
+	test := []struct {
+		name    string
+		paramID string
+		wantID  int64
+		wantErr bool
+	}{
+		{
+			name:    "valid ID",
+			paramID: "67",
+			wantID:  67,
+			wantErr: false,
+		},
+		{
+			name:    "invalid ID",
+			paramID: "playouteerwildsmanshitissickasfuck",
+			wantID:  0,
+			wantErr: true,
+		},
+		{
+			name:    "negative ID",
+			paramID: "-5",
+			wantID:  0,
+			wantErr: true,
+		},
+		{
+			name:    "zero ID",
+			paramID: "0",
+			wantID:  0,
+			wantErr: true,
+		},
+	}
+
+	app := newTestApplication(t)
+	for _, tt := range test {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			params := httprouter.Params{
+				httprouter.Param{Key: "id", Value: tt.paramID},
+			}
+
+			ctx := context.WithValue(req.Context(), httprouter.ParamsKey, params)
+			req = req.WithContext(ctx)
+
+			gotID, err := app.readParamID(req)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("got nil error; want error: %t", tt.wantErr)
+				} else {
+					if !strings.Contains(err.Error(), "invalid id parameter") {
+						t.Fatalf("got error: %v; want error: %v", err, "invalid id parameter")
+					}
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				} else {
+					assert.Equal(t, gotID, tt.wantID)
+				}
+			}
+
+		})
+	}
+
+}
