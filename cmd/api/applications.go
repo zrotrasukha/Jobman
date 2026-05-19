@@ -22,7 +22,7 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	var application = &data.Application{
+	var application = &data.JobApplication{
 		CompanyName: input.Company_name,
 		RoleTitle:   input.RoleTitle,
 		Status:      input.Status,
