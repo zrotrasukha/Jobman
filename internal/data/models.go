@@ -9,11 +9,11 @@ import (
 var ErrRecordNotFound = errors.New("record not found")
 
 type Models struct {
-	Application ApplicationModel
+	Application JobApplicationModelInterface
 }
 
 func NewModels(pool *pgxpool.Pool) Models {
 	return Models{
-		Application: ApplicationModel{pool: pool},
+		Application: JobApplicationModel{pool: pool},
 	}
 }

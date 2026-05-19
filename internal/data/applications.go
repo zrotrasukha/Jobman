@@ -10,7 +10,7 @@ import (
 	"github.com/zrotrasukha/jobman/internal/validator"
 )
 
-type Application struct {
+type JobApplication struct {
 	ID                int64      `json:"id"`
 	CompanyName       string     `json:"company_name"`
 	RoleTitle         string     `json:"role_title"`
@@ -22,11 +22,16 @@ type Application struct {
 	Version           int32      `json:"version"` // needed for optimistic locking
 }
 
-type ApplicationModel struct {
+type JobApplicationModelInterface interface {
+	Insert(jobApp *JobApplication) error
+	Get(id int64) (*JobApplication, error)
+}
+
+type JobApplicationModel struct {
 	pool *pgxpool.Pool
 }
 
-func (m ApplicationModel) Insert(jobApp *Application) error {
+func (m JobApplicationModel) Insert(jobApp *JobApplication) error {
 	query := `INSERT INTO applications (company_name, role_title, status, notes)
 						VALUES ($1, $2, $3, $4) RETURNING id, version, applied_at, updated_at`
 
@@ -48,7 +53,7 @@ func (m ApplicationModel) Insert(jobApp *Application) error {
 	)
 }
 
-func (m ApplicationModel) Get(id int64) (*Application, error) {
+func (m JobApplicationModel) Get(id int64) (*JobApplication, error) {
 	if id < 1 {
 		return nil, ErrRecordNotFound
 	}
@@ -58,21 +63,21 @@ func (m ApplicationModel) Get(id int64) (*Application, error) {
 						WHERE id = $1
 	`
 
-	var application Application
+	var jobApp JobApplication
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	err := m.pool.QueryRow(ctx, query, id).Scan(
-		&application.ID,
-		&application.CompanyName,
-		&application.RoleTitle,
-		&application.Status,
-		&application.AppliedAt,
-		&application.UpdatedAt,
-		&application.LastCommunication,
-		&application.Notes,
-		&application.Version,
+		&jobApp.ID,
+		&jobApp.CompanyName,
+		&jobApp.RoleTitle,
+		&jobApp.Status,
+		&jobApp.AppliedAt,
+		&jobApp.UpdatedAt,
+		&jobApp.LastCommunication,
+		&jobApp.Notes,
+		&jobApp.Version,
 	)
 	if err != nil {
 		switch {
@@ -83,10 +88,10 @@ func (m ApplicationModel) Get(id int64) (*Application, error) {
 		}
 	}
 
-	return &application, nil
+	return &jobApp, nil
 }
 
-func ValidateApplication(v *validator.Validator, jobApp *Application) {
+func ValidateJobApplication(v *validator.Validator, jobApp *JobApplication) {
 	v.CheckField(jobApp.CompanyName != "", "company_name", "must be provided")
 	v.CheckField(len(jobApp.CompanyName) <= 200, "company_name", "must not be more than 200 bytes long")
 
