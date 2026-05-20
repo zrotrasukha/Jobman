@@ -15,8 +15,8 @@ type JobApplication struct {
 	CompanyName       string     `json:"company_name"`
 	RoleTitle         string     `json:"role_title"`
 	Status            Status     `json:"status"`
-	AppliedAt         time.Time  `json:"applied_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
+	AppliedAt         *time.Time `json:"applied_at"`
+	UpdatedAt         time.Time  `json:"updated_at"` // cannot be null
 	LastCommunication *time.Time `json:"last_communication"`
 	Notes             string     `json:"notes"`
 	Version           int32      `json:"version"` // needed for optimistic locking
@@ -102,6 +102,6 @@ func ValidateJobApplication(v *validator.Validator, jobApp *JobApplication) {
 	v.CheckField(len(jobApp.Status) <= 200, "status", "must not be more than 200 bytes long")
 	v.CheckField(jobApp.Status.IsValid(), "status", "must be a valid status")
 
-	v.CheckField(!jobApp.AppliedAt.IsZero(), "applied_at", "must be provided")
+	v.CheckField(jobApp.AppliedAt != nil, "applied_at", "must be provided")
 	v.CheckField(len(jobApp.Notes) <= 8000, "notes", "must not be more than 1000 bytes long")
 }
