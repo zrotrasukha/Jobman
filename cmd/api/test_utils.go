@@ -11,7 +11,7 @@ import (
 	"github.com/zrotrasukha/jobman/internal/data/mocks"
 )
 
-func newTestApplication(t *testing.T) *application {
+func newTestApplication() *application {
 	cfg := config{
 		env: "test",
 	}

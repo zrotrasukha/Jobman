@@ -14,7 +14,7 @@ import (
 
 func TestHealthcheck(t *testing.T) {
 	ts := newTestServer(t, mocks.MockJobApplicationModel{})
-	app := newTestApplication(t)
+	app := newTestApplication()
 
 	expected := envelop{
 		"status":      "available",

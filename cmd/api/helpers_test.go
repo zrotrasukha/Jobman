@@ -14,7 +14,7 @@ import (
 )
 
 func TestWriteJSON(t *testing.T) {
-	app := newTestApplication(t)
+	app := newTestApplication()
 	env := envelop{
 		"message": "testing TestReadJSON helper",
 	}
@@ -89,7 +89,7 @@ func TestReadJSON(t *testing.T) {
 			err:  "body must not be larger than 1048576 bytes",
 		},
 	}
-	app := newTestApplication(t)
+	app := newTestApplication()
 	ts := newTestServer(t, mocks.MockJobApplicationModel{})
 
 	for _, tt := range tests {
@@ -151,7 +151,7 @@ func TestReadParamID(t *testing.T) {
 		},
 	}
 
-	app := newTestApplication(t)
+	app := newTestApplication()
 	for _, tt := range test {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
