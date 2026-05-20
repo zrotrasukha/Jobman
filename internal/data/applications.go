@@ -25,6 +25,7 @@ type JobApplication struct {
 type JobApplicationModelInterface interface {
 	Insert(jobApp *JobApplication) error
 	Get(id int64) (*JobApplication, error)
+	Update(jobApp *JobApplication) error
 }
 
 type JobApplicationModel struct {
@@ -90,6 +91,39 @@ func (m JobApplicationModel) Get(id int64) (*JobApplication, error) {
 	}
 
 	return &jobApp, nil
+}
+
+func (m JobApplicationModel) Update(jobApp *JobApplication) error {
+	query := `UPDATE applications
+	SET company_name = $1, role_title = $2, status = $3, applied_at = $4, last_communication = $5, notes = $6, updated_at = now(), version = version + 1
+	WHERE id = $7 AND version = $8
+	RETURNING version, updated_at`
+
+	args := []any{
+		jobApp.CompanyName,
+		jobApp.RoleTitle,
+		jobApp.Status,
+		jobApp.AppliedAt,
+		jobApp.LastCommunication,
+		jobApp.Notes,
+		jobApp.ID,
+		jobApp.Version,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.pool.QueryRow(ctx, query, args...).Scan(&jobApp.Version, &jobApp.UpdatedAt)
+	if err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return err
+		}
+	}
+
+	return nil
 }
 
 func ValidateJobApplication(v *validator.Validator, jobApp *JobApplication) {
