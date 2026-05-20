@@ -32,12 +32,13 @@ type JobApplicationModel struct {
 }
 
 func (m JobApplicationModel) Insert(jobApp *JobApplication) error {
-	query := `INSERT INTO applications (company_name, role_title, status, notes)
-						VALUES ($1, $2, $3, $4) RETURNING id, version, applied_at, updated_at`
+	query := `INSERT INTO applications (company_name, role_title, applied_at, status, notes)
+						VALUES ($1, $2, $3, $4, $5) RETURNING id, version, applied_at, updated_at`
 
 	args := []any{
 		jobApp.CompanyName,
 		jobApp.RoleTitle,
+		jobApp.AppliedAt,
 		jobApp.Status,
 		jobApp.Notes,
 	}

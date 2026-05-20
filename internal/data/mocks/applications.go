@@ -6,6 +6,8 @@ import (
 	"github.com/zrotrasukha/jobman/internal/data"
 )
 
+var fixedDate = time.Date(2026, 8, 12, 11, 45, 0, 0, time.UTC)
+
 type MockJobApplicationModel struct {
 	InsertFunc func(jobApp *data.JobApplication) error
 	GETFunc    func(id int64) (*data.JobApplication, error)
@@ -15,7 +17,6 @@ func (m MockJobApplicationModel) Insert(jobApp *data.JobApplication) error {
 	if m.InsertFunc != nil {
 		return m.InsertFunc(jobApp)
 	}
-	fixedDate := time.Date(2026, 8, 12, 11, 45, 0, 0, time.UTC)
 	jobApp.ID = 1
 	jobApp.CompanyName = "Test Company"
 	jobApp.UpdatedAt = fixedDate
@@ -38,7 +39,10 @@ func (m MockJobApplicationModel) Get(id int64) (*data.JobApplication, error) {
 			CompanyName: "Test Company",
 			RoleTitle:   "Test Role",
 			Status:      data.StatusApplied,
+			AppliedAt:   &fixedDate,
+			UpdatedAt:   fixedDate,
 			Notes:       "Test Notes",
+			Version:     1,
 		}, nil
 	}
 
