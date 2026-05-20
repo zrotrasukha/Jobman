@@ -81,6 +81,7 @@ func (app *application) GetApplicationHandler(w http.ResponseWriter, r *http.Req
 			return
 		default:
 			app.serverErrResponse(w, r)
+			return
 		}
 	}
 
