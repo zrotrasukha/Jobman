@@ -10,6 +10,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/zrotrasukha/jobman/internal/assert"
+	"github.com/zrotrasukha/jobman/internal/data/mocks"
 )
 
 func TestWriteJSON(t *testing.T) {
@@ -89,7 +90,7 @@ func TestReadJSON(t *testing.T) {
 		},
 	}
 	app := newTestApplication(t)
-	ts := newTestServer(t)
+	ts := newTestServer(t, mocks.MockJobApplicationModel{})
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -17,7 +17,7 @@ func newTestApplication(t *testing.T) *application {
 	}
 	return &application{
 		config: cfg,
-		logger: slog.New(slog.NewTextHandler(t.Output(), nil)),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		models: mocks.NewMockModels(),
 	}
 }
@@ -26,14 +26,17 @@ type testServer struct {
 	*httptest.Server
 }
 
-func newTestServer(t *testing.T) *testServer {
+func newTestServer(t *testing.T, model mocks.MockJobApplicationModel) *testServer {
 	app := newTestApplication(t)
+	app.models.Application = model
+
 	ts := httptest.NewServer(app.routes())
 	t.Cleanup(ts.Close)
 
 	return &testServer{ts}
 }
 
+// ts.Get() will send a GET request to the test server with the given url path, and return the status code and response body.
 func (ts *testServer) Get(t *testing.T, urlPath string) (int, string) {
 	rs, err := ts.Client().Get(ts.URL + urlPath)
 	if err != nil {
