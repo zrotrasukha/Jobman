@@ -17,23 +17,34 @@ func Equal[T comparable](t *testing.T, actual, expected T) {
 func EqualJSON(t *testing.T, actual []byte, expected any) {
 	t.Helper()
 
-	expectedB, err := json.MarshalIndent(expected, "", "\t")
-	if err != nil {
-		t.Fatalf("failed to marshal expected JSON: %v", err)
-	}
-
-	var expectedInterface any
 	var actualInterface any
+	var expectedInterface any
 
-	if err := json.Unmarshal(expectedB, &expectedInterface); err != nil {
-		t.Fatalf("failed to unmarshal expected JSON: %v", err)
+	// find the right type shit
+	var expectedBytes []byte
+	switch v := expected.(type) {
+	case string:
+		expectedBytes = []byte(v)
+	case []byte:
+		expectedBytes = v
+	default: // in case if the expected is map typ
+		var err error
+		expectedBytes, err = json.Marshal(v)
+		if err != nil {
+			t.Fatalf("faild to marshal expected type %T: %v", v, err)
+		}
 	}
 
+	// Be the final judgement fair
 	if err := json.Unmarshal(actual, &actualInterface); err != nil {
-		t.Fatalf("failed to unmarshal actual JSON: %v", err)
+		t.Fatalf("failde to marshal actual json: %v", err)
+	}
+	if err := json.Unmarshal(expectedBytes, &expectedInterface); err != nil {
+		t.Fatalf("failde to marshal actual json: %v", err)
 	}
 
-	if !reflect.DeepEqual(expectedInterface, actualInterface) {
-		t.Errorf("\ngot: %s;\nwant: %s", string(actual), string(expectedB))
+	if !reflect.DeepEqual(actualInterface, expectedInterface) {
+		t.Errorf("\ngot: %s\nwant: %s", string(actual), string(expectedBytes))
 	}
+
 }
