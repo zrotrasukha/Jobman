@@ -46,7 +46,7 @@ func TestCreateApplicationHandler(t *testing.T) {
 				"company_name": "Test Company",
 				"role_title": "Test Role",
 				"status": "Applied",
-				"applied_at" : "2024-06-01T12:00:00Z",
+				"applied_at" : "2026-08-12T11:45:00Z",
 				"notes": "Test Notes"
 			}`,
 			wantHeader: true,
@@ -57,10 +57,11 @@ func TestCreateApplicationHandler(t *testing.T) {
         		"company_name": "Test Company",
         		"role_title": "Test Role",
         		"status": "Applied",
-        		"applied_at": "2024-06-01T12:00:00Z",
+						"applied_at" : "2026-08-12T11:45:00Z",
+						"updated_at" : "2026-08-12T11:45:00Z",
         		"last_communication": null,
         		"notes": "Test Notes",
-        		"version": 0
+        		"version": 1
         	}
         }`,
 		},
@@ -69,7 +70,7 @@ func TestCreateApplicationHandler(t *testing.T) {
 			input: `{
 				"company_name": "Test Company",
 				"role_title": "Test Role",
-				"applied_at" : "2024-06-01T12:00:00Z",
+				"applied_at" : "2026-08-12T11:45:00Z",
 				"status": "Applied",
 				"notes": "Test Notes",
 				"invalid_field": "Invalid Value"
@@ -83,7 +84,7 @@ func TestCreateApplicationHandler(t *testing.T) {
 			input: `{
 				"company_name": "Test Company",
 				"role_title": "Test Role",
-				"applied_at" : "2024-06-01T12:00:00Z",
+				"applied_at" : "2026-08-12T11:45:00Z",
 				"status": "Invalid Status",
 				"notes": "Test Notes"
 			}`,
