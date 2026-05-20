@@ -4,14 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/zrotrasukha/jobman/internal/data"
+	"github.com/zrotrasukha/jobman/internal/validator"
 )
 
 func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Company_name string      `json:"company_name"`
 		RoleTitle    string      `json:"role_title"`
+		AppliedAt    string      `json:"applied_at"`
 		Status       data.Status `json:"status"`
 		Notes        string      `json:"notes"`
 	}
@@ -27,6 +30,21 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 		RoleTitle:   input.RoleTitle,
 		Status:      input.Status,
 		Notes:       input.Notes,
+	}
+	v := validator.New()
+
+	if input.AppliedAt != "" {
+		t, err := time.Parse(time.RFC3339, input.AppliedAt)
+		if err != nil {
+			v.AddError("applied_at", "must be a valid RFC3339 date")
+		} else {
+			application.AppliedAt = &t
+		}
+	}
+
+	if data.ValidateJobApplication(v, application); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
 	}
 
 	err = app.models.Application.Insert(application)
