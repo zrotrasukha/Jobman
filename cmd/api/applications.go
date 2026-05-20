@@ -91,9 +91,85 @@ func (app *application) GetApplicationHandler(w http.ResponseWriter, r *http.Req
 	}
 
 }
-
 func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "update application")
+
+	id, err := app.readParamID(r)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	app.logger.Info("Updating application with ID", "id", id)
+
+	application, err := app.models.Application.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+			return
+		default:
+			app.serverErrResponse(w, r)
+			return
+		}
+	}
+
+	var input struct {
+		Company_name *string      `json:"company_name"`
+		RoleTitle    *string      `json:"role_title"`
+		AppliedAt    *string      `json:"applied_at"`
+		Status       *data.Status `json:"status"`
+		Notes        *string      `json:"notes"`
+	}
+
+	err = app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if input.Company_name != nil {
+		application.CompanyName = *input.Company_name
+	}
+	if input.RoleTitle != nil {
+		application.RoleTitle = *input.RoleTitle
+	}
+	if input.Notes != nil {
+		application.Notes = *input.Notes
+	}
+	if input.Status != nil {
+		application.Status = *input.Status
+	}
+	if input.AppliedAt != nil {
+		t, err := time.Parse(time.RFC3339, *input.AppliedAt)
+		if err != nil {
+			app.badRequestResponse(w, r, fmt.Errorf("invalid applied_at value: %w", err))
+			return
+		}
+		application.AppliedAt = &t
+	}
+
+	v := validator.New()
+
+	if data.ValidateJobApplication(v, application); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	err = app.models.Application.Update(application)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.editConflictResponse(w, r)
+			return
+		default:
+			app.serverErrResponse(w, r)
+			return
+		}
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelop{"application": application}, nil)
+	if err != nil {
+		app.serverErrResponse(w, r)
+	}
 }
 
 func (app *application) DeleteApplicationHandler(w http.ResponseWriter, r *http.Request) {
