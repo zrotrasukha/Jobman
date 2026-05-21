@@ -27,7 +27,7 @@ type testServer struct {
 }
 
 func newTestServer(t *testing.T, model mocks.MockJobApplicationModel) *testServer {
-	app := newTestApplication(t)
+	app := newTestApplication()
 	app.models.Application = model
 
 	ts := httptest.NewServer(app.routes())
