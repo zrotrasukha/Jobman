@@ -26,6 +26,7 @@ type JobApplicationModelInterface interface {
 	Insert(jobApp *JobApplication) error
 	Get(id int64) (*JobApplication, error)
 	Update(jobApp *JobApplication) error
+	Delete(id int64) error
 }
 
 type JobApplicationModel struct {
@@ -124,6 +125,28 @@ func (m JobApplicationModel) Update(jobApp *JobApplication) error {
 	}
 
 	return nil
+}
+
+func (m JobApplicationModel) Delete(id int64) error {
+	if id < 1 {
+		return ErrRecordNotFound
+	}
+
+	query := `DELETE FROM applications WHERE id = $1`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result, err := m.pool.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrRecordNotFound
+	}
+
+	return err
 }
 
 func ValidateJobApplication(v *validator.Validator, jobApp *JobApplication) {

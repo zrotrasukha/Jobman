@@ -173,5 +173,27 @@ func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.
 }
 
 func (app *application) DeleteApplicationHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "delete application")
+	id, err := app.readParamID(r)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	err = app.models.Application.Delete(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+			return
+		default:
+			app.serverErrResponse(w, r)
+			return
+		}
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelop{"message": "application successfully deleted"}, nil)
+	if err != nil {
+		app.serverErrResponse(w, r)
+	}
+
 }
