@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -10,6 +11,7 @@ import (
 	"github.com/zrotrasukha/jobman/internal/validator"
 )
 
+// JobApplication represents a job application record in the database. It includes fields for the company name, role title, application status, timestamps for when the application was made and last updated, and any notes about the application. The Version field is used for optimistic locking to prevent concurrent update conflicts.
 type JobApplication struct {
 	ID                int64      `json:"id"`
 	CompanyName       string     `json:"company_name"`
@@ -22,17 +24,21 @@ type JobApplication struct {
 	Version           int32      `json:"version"` // needed for optimistic locking
 }
 
+// JobApplicationModelInterface defines the methods that any implementation of a job application model must provide. This includes methods for inserting a new job application, retrieving a job application by ID, retrieving all job applications with optional search and filtering, updating an existing job application, and deleting a job application by ID.
 type JobApplicationModelInterface interface {
 	Insert(jobApp *JobApplication) error
 	Get(id int64) (*JobApplication, error)
+	GetAll(searchString string, filters Filters) ([]*JobApplication, *Metadata, error)
 	Update(jobApp *JobApplication) error
 	Delete(id int64) error
 }
 
+// JobApplicationModel provides methods for interacting with the job applications table in the database. It uses a connection pool to execute SQL queries and manage database connections efficiently.
 type JobApplicationModel struct {
 	pool *pgxpool.Pool
 }
 
+// Insert adds a new job application record to the database. It takes a JobApplication struct as input and populates its ID, Version, AppliedAt, and UpdatedAt fields based on the values returned from the database after the insert operation. If the insert is successful, it returns nil; otherwise, it returns an error.
 func (m JobApplicationModel) Insert(jobApp *JobApplication) error {
 	query := `INSERT INTO applications (company_name, role_title, applied_at, status, notes)
 						VALUES ($1, $2, $3, $4, $5) RETURNING id, version, applied_at, updated_at`
@@ -56,6 +62,7 @@ func (m JobApplicationModel) Insert(jobApp *JobApplication) error {
 	)
 }
 
+// Get returns the job application with the specified ID. If no matching record is found, it returns a ErrRecordNotFound error.
 func (m JobApplicationModel) Get(id int64) (*JobApplication, error) {
 	if id < 1 {
 		return nil, ErrRecordNotFound
@@ -94,6 +101,65 @@ func (m JobApplicationModel) Get(id int64) (*JobApplication, error) {
 	return &jobApp, nil
 }
 
+// GetAll returns a list of job applications matching the provided searchString and filters. It also returns metadata about the total number of records and pagination details.
+func (m JobApplicationModel) GetAll(searchString string, filters Filters) ([]*JobApplication, *Metadata, error) {
+	query := fmt.Sprintf(`
+					SELECT COUNT(*) OVER() as total_records, id, company_name, role_title, status, applied_at, updated_at, last_communication, notes, version
+					FROM applications
+					WHERE (to_tsvector('simple', company_name || ' ' || role_title) @@ plainto_tsquery('simple', $1) or $1 = '')
+					ORDER BY %s %s, id asc
+					LIMIT $2 OFFSET $3`, filters.SortColumn(), filters.SortDirection())
+
+	args := []any{
+		searchString,
+		filters.PageSize,
+		filters.Offset(),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	rows, err := m.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	totalRecords := 0
+	jobApps := []*JobApplication{}
+
+	for rows.Next() {
+		var jobApp JobApplication
+
+		err := rows.Scan(
+			&totalRecords,
+			&jobApp.ID,
+			&jobApp.CompanyName,
+			&jobApp.RoleTitle,
+			&jobApp.Status,
+			&jobApp.AppliedAt,
+			&jobApp.UpdatedAt,
+			&jobApp.LastCommunication,
+			&jobApp.Notes,
+			&jobApp.Version,
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		jobApps = append(jobApps, &jobApp)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+
+	return jobApps, metadata, nil
+}
+
+// Update modifies the details of an existing job application in the database. It uses optimistic locking to ensure that updates are only applied if the record has not been modified by another process since it was last read. If a version conflict is detected, it returns an ErrEditConflict error.
 func (m JobApplicationModel) Update(jobApp *JobApplication) error {
 	query := `UPDATE applications
 	SET company_name = $1, role_title = $2, status = $3, applied_at = $4, last_communication = $5, notes = $6, updated_at = now(), version = version + 1
@@ -127,6 +193,7 @@ func (m JobApplicationModel) Update(jobApp *JobApplication) error {
 	return nil
 }
 
+// Delete removes the job application with the specified ID from the database. If no matching record is found, it returns a ErrRecordNotFound error.
 func (m JobApplicationModel) Delete(id int64) error {
 	if id < 1 {
 		return ErrRecordNotFound
@@ -149,6 +216,7 @@ func (m JobApplicationModel) Delete(id int64) error {
 	return err
 }
 
+// ValidateJobApplication checks the fields of a JobApplication struct to ensure they meet the required criteria. It uses the provided validator to collect any validation errors.
 func ValidateJobApplication(v *validator.Validator, jobApp *JobApplication) {
 	v.CheckField(jobApp.CompanyName != "", "company_name", "must be provided")
 	v.CheckField(len(jobApp.CompanyName) <= 200, "company_name", "must not be more than 200 bytes long")

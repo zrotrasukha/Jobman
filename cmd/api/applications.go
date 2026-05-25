@@ -10,6 +10,7 @@ import (
 	"github.com/zrotrasukha/jobman/internal/validator"
 )
 
+// Handler for creating a new job application
 func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Company_name string      `json:"company_name"`
@@ -62,8 +63,39 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 	}
 }
 
-func (app *application) GetApplicationsHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("all the applications are here")
+func (app *application) ListApplicationHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Search string
+		data.Filters
+	}
+
+	qs := r.URL.Query()
+
+	input.Search = app.readString(qs, "search", "")
+	input.Filters.Page = app.readInt(qs, "page", 1)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20)
+	input.Filters.Sort = app.readString(qs, "sort", "id")
+	input.Filters.SortSafeList = []string{"id", "company_name", "role_title", "status", "-id", "-company_name", "-role_title", "-status"}
+
+	v := validator.New()
+
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	applications, metadata, err := app.models.Application.GetAll(input.Search, input.Filters)
+	if err != nil {
+		app.serverErrResponse(w, r)
+		fmt.Println("Error fetching applications:", err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelop{"applications": applications, "metadata": metadata}, nil)
+	if err != nil {
+		app.serverErrResponse(w, r)
+	}
+
 }
 
 func (app *application) GetApplicationHandler(w http.ResponseWriter, r *http.Request) {
