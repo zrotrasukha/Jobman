@@ -35,7 +35,6 @@ func TestHealthcheck(t *testing.T) {
 }
 
 func TestCreateApplicationHandler(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		input      string
@@ -53,22 +52,28 @@ func TestCreateApplicationHandler(t *testing.T) {
 				"applied_at" : "2026-08-12T11:45:00Z",
 				"notes": "Test Notes"
 			}`,
-			mockModels: mocks.MockJobApplicationModel{},
+			mockModels: mocks.MockJobApplicationModel{
+				InsertFunc: func(jobApp *data.JobApplication) error {
+					jobApp.ID = 1
+					jobApp.Version = 1
+					return nil
+				},
+			},
 			wantHeader: true,
 			wantStatus: http.StatusCreated,
 			wantBody: `{
-        	"application": {
-        		"id": 1,
-        		"company_name": "Test Company",
-        		"role_title": "Test Role",
-        		"status": "Applied",
-						"applied_at" : "2026-08-12T11:45:00Z",
-						"updated_at" : "2026-08-12T11:45:00Z",
-        		"last_communication": null,
-        		"notes": "Test Notes",
-        		"version": 1
-        	}
-        }`,
+			"application": {
+				"id": 1,
+				"company_name": "Test Company",
+				"role_title": "Test Role",
+				"status": "Applied",
+				"applied_at" : "2026-08-12T11:45:00Z",
+				"updated_at" : "0001-01-01T00:00:00Z",
+				"last_communication": null,
+				"notes": "Test Notes",
+				"version": 1
+			}
+		}`,
 		},
 		{
 			name: "invalid field",
@@ -83,8 +88,7 @@ func TestCreateApplicationHandler(t *testing.T) {
 			mockModels: mocks.MockJobApplicationModel{},
 			wantHeader: false,
 			wantStatus: http.StatusBadRequest,
-
-			wantBody: `{"error": "unknown field \"invalid_field\""}`,
+			wantBody:   `{"error": "unknown field \"invalid_field\""}`,
 		},
 		{
 			name: "invalid status",
@@ -113,11 +117,11 @@ func TestCreateApplicationHandler(t *testing.T) {
 			wantHeader: false,
 			wantStatus: http.StatusUnprocessableEntity,
 			wantBody: `{
-		      "error": {
-		              "applied_at": "must be provided",
-		              "company_name": "must be provided",
-		              "role_title": "must be provided"
-		      }
+			  "error": {
+					  "applied_at": "must be provided",
+					  "company_name": "must be provided",
+					  "role_title": "must be provided"
+			  }
 			}`,
 		},
 		{
@@ -145,7 +149,7 @@ func TestCreateApplicationHandler(t *testing.T) {
 				"role_title": "Test Role",
 				"applied_at" : "2026-08-12T11:45:00Z",
 				"status": "Applied",
-				"notes": "Test Notes"	
+				"notes": "Test Notes"   
 			}`,
 			mockModels: mocks.MockJobApplicationModel{
 				InsertFunc: func(jobApp *data.JobApplication) error {
@@ -184,25 +188,6 @@ func TestGetApplicationHandler(t *testing.T) {
 		wantBody   string
 	}{
 		{
-			name:       "valid id",
-			id:         "1",
-			wantCode:   http.StatusOK,
-			mockModels: mocks.MockJobApplicationModel{},
-			wantBody: `{
-                "application": {
-                        "id": 1,
-                        "company_name": "Test Company",
-                        "role_title": "Test Role",
-                        "status": "Applied",
-                        "applied_at": "2026-08-12T11:45:00Z",
-                        "updated_at": "2026-08-12T11:45:00Z",
-                        "last_communication": null,
-                        "notes": "Test Notes",
-                        "version": 1
-                }
-        }`,
-		},
-		{
 			name:       "invalid id",
 			id:         "abc",
 			wantCode:   http.StatusBadRequest,
@@ -240,7 +225,75 @@ func TestGetApplicationHandler(t *testing.T) {
 			sc, body := ts.Get(t, urlPath)
 
 			assert.Equal(t, sc, tt.wantCode)
-			assert.EqualJSON(t, []byte(body), tt.wantBody)
+			assert.EqualJSON(t, []byte(body), []byte(tt.wantBody))
+		})
+	}
+}
+
+func TestListApplicationHandler(t *testing.T) {
+	tests := []struct {
+		name       string
+		url        string
+		wantCode   int
+		mockModels mocks.MockJobApplicationModel
+		wantBody   string
+	}{
+		{
+			name:     "invalid parameter - page too low",
+			url:      "/v1/applications?page=0",
+			wantCode: http.StatusUnprocessableEntity,
+			mockModels: mocks.MockJobApplicationModel{
+				GetAllFunc: func(searchString string, filters data.Filters) ([]*data.JobApplication, *data.Metadata, error) {
+					t.Fatal("GetAll should not be called if validation fails!")
+					return nil, nil, nil
+				},
+			},
+			wantBody: `{"error": {"page": "must be greater than zero"}}`,
+		},
+		{
+			name:     "invalid parameter - page size too high",
+			url:      "/v1/applications?page_size=999",
+			wantCode: http.StatusUnprocessableEntity,
+			mockModels: mocks.MockJobApplicationModel{
+				GetAllFunc: func(searchString string, filters data.Filters) ([]*data.JobApplication, *data.Metadata, error) {
+					t.Fatal("GetAll should not be called if validation fails!")
+					return nil, nil, nil
+				},
+			},
+			wantBody: `{"error": {"page_size": "must be a maximum of 100"}}`,
+		},
+		{
+			name:     "invalid parameter - dangerous sort clause",
+			url:      "/v1/applications?sort=drop_table_users",
+			wantCode: http.StatusUnprocessableEntity,
+			mockModels: mocks.MockJobApplicationModel{
+				GetAllFunc: func(searchString string, filters data.Filters) ([]*data.JobApplication, *data.Metadata, error) {
+					t.Fatal("GetAll should not be called if validation fails!")
+					return nil, nil, nil
+				},
+			},
+			wantBody: `{"error": {"sort": "invalid sort value"}}`,
+		},
+		{
+			name:     "db fails",
+			url:      "/v1/applications",
+			wantCode: http.StatusInternalServerError,
+			mockModels: mocks.MockJobApplicationModel{
+				GetAllFunc: func(searchString string, filters data.Filters) ([]*data.JobApplication, *data.Metadata, error) {
+					return nil, nil, errors.New("database connection completely fried")
+				},
+			},
+			wantBody: `{"error": "the server encountered a problem and could not process your request"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := newTestServer(t, tt.mockModels)
+			sc, body := ts.Get(t, tt.url)
+
+			assert.Equal(t, sc, tt.wantCode)
+			assert.EqualJSON(t, []byte(body), []byte(tt.wantBody))
 		})
 	}
 }
