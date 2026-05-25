@@ -63,6 +63,7 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 	}
 }
 
+// Handler for listing job applications with optional search and pagination
 func (app *application) ListApplicationHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Search string
@@ -75,7 +76,7 @@ func (app *application) ListApplicationHandler(w http.ResponseWriter, r *http.Re
 	input.Filters.Page = app.readInt(qs, "page", 1)
 	input.Filters.PageSize = app.readInt(qs, "page_size", 20)
 	input.Filters.Sort = app.readString(qs, "sort", "id")
-	input.Filters.SortSafeList = []string{"id", "company_name", "role_title", "status", "-id", "-company_name", "-role_title", "-status"}
+	input.Filters.SortSafeList = []string{"id", "company_name", "role_title", "applied_at", "status", "-id", "-company_name", "-applied_at", "-role_title", "-status"}
 
 	v := validator.New()
 
@@ -87,7 +88,6 @@ func (app *application) ListApplicationHandler(w http.ResponseWriter, r *http.Re
 	applications, metadata, err := app.models.Application.GetAll(input.Search, input.Filters)
 	if err != nil {
 		app.serverErrResponse(w, r)
-		fmt.Println("Error fetching applications:", err)
 		return
 	}
 
@@ -98,6 +98,7 @@ func (app *application) ListApplicationHandler(w http.ResponseWriter, r *http.Re
 
 }
 
+// Handler for retrieving a specific job application by ID
 func (app *application) GetApplicationHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readParamID(r)
 	if err != nil {
@@ -123,6 +124,8 @@ func (app *application) GetApplicationHandler(w http.ResponseWriter, r *http.Req
 	}
 
 }
+
+// Handler for updating an existing job application by ID
 func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.Request) {
 
 	id, err := app.readParamID(r)
@@ -204,6 +207,7 @@ func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.
 	}
 }
 
+// Handler for deleting a specific job application by ID
 func (app *application) DeleteApplicationHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readParamID(r)
 	if err != nil {
