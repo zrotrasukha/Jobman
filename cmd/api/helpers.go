@@ -7,14 +7,17 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
 )
 
+// envelop is a simple wrapper type that allows us to easily create JSON responses with a consistent structure. It is defined as a map with string keys and values of any type, which can be used in helpers like writeJSON.
 type envelop map[string]any
 
+// writeJSON writes the given data as JSON to the response writer, along with any additional headers. It also sets the appropriate content type and status code for the response.
 func (app *application) writeJSON(w http.ResponseWriter, status int, data any, headers http.Header) error {
 
 	b, err := json.MarshalIndent(data, "", "\t")
@@ -31,6 +34,7 @@ func (app *application) writeJSON(w http.ResponseWriter, status int, data any, h
 	return nil
 }
 
+// readJSON reads the JSON from the request body and decodes it into the destination struct. It also performs validation checks for syntax errors, unknown fields, and body size limits, and returns appropriate error messages for each case.
 func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	MAX_BYTESIZE := 1_048_576
 	r.Body = http.MaxBytesReader(w, r.Body, int64(MAX_BYTESIZE))
@@ -76,6 +80,7 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 	return nil
 }
 
+// readParamID extracts the "id" parameter from the URL path, converts it to an int64, and returns it. If the parameter is missing, not a valid integer, or less than 1, it returns an error indicating that the ID parameter is invalid.
 func (app *application) readParamID(r *http.Request) (int64, error) {
 	params := httprouter.ParamsFromContext(r.Context())
 	id, err := strconv.ParseInt(params.ByName("id"), 10, 64)
@@ -85,4 +90,29 @@ func (app *application) readParamID(r *http.Request) (int64, error) {
 	}
 
 	return id, nil
+}
+
+// readString retrieves the value of the specified key from the query string parameters. If the key is not present or has an empty value, it returns the provided default value instead.
+func (app *application) readString(qs url.Values, key string, defaultValue string) string {
+	s := qs.Get(key)
+	if s == "" {
+		return defaultValue
+	}
+
+	return s
+}
+
+// readCSV retrieves the value of the specified key from the query string parameters, splits it by commas, and returns a slice of strings. If the key is not present or has an empty value, it returns the provided default slice instead.
+func (app *application) readInt(qs url.Values, key string, defaultValue int) int {
+	s := qs.Get(key)
+	if s == "" {
+		return defaultValue
+	}
+
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		return defaultValue
+	}
+
+	return i
 }

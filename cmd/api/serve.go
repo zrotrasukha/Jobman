@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// serve starts the HTTP server and listens for incoming requests. It also sets up a goroutine to handle graceful shutdown when an interrupt signal is received. The server will wait for any ongoing requests to complete before shutting down, and it will log the shutdown process. If any errors occur during startup or shutdown, they are returned to the caller.
 func (app *application) serve() error {
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", app.config.port),

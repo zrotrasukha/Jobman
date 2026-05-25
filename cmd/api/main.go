@@ -33,6 +33,7 @@ type application struct {
 	wg     sync.WaitGroup
 }
 
+// openDB establishes a connection pool to the PostgreSQL database using the provided configuration. It sets the maximum number of open connections, minimum number of idle connections, and maximum idle time for the connections in the pool. The function also performs a ping to the database to ensure that the connection is valid before returning the pool. If any errors occur during this process, they are returned to the caller.
 func openDB(cfg config) (*pgxpool.Pool, error) {
 	poolCfg, err := pgxpool.ParseConfig(cfg.db.dsn)
 	if err != nil {
