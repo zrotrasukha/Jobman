@@ -21,6 +21,11 @@ type Models struct {
 // NewModels initializes a new Models struct with the provided database connection pool. It creates an instance of the JobApplicationModel and assigns it to the Application field of the Models struct. This function is typically called during application startup to set up the models with the necessary database connections, allowing the rest of the application to interact with the database through these models.
 func NewModels(pool *pgxpool.Pool) Models {
 	return Models{
-		Application: JobApplicationModel{pool: pool},
+		Application: NewJobApplicationModel(pool),
 	}
+}
+
+// NewJobApplicationModel creates a new instance of the JobApplicationModel struct, which provides methods for interacting with the job applications table in the database. It takes a pgxpool.Pool as an argument, which is used to manage database connections and execute SQL queries. The returned JobApplicationModel can be used to perform CRUD operations on job application records in the database.
+func NewJobApplicationModel(pool *pgxpool.Pool) JobApplicationModel {
+	return JobApplicationModel{pool: pool}
 }
