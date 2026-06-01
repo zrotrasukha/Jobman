@@ -31,6 +31,7 @@ type JobApplicationModelInterface interface {
 	GetAll(searchString string, filters Filters) ([]*JobApplication, *Metadata, error)
 	Update(jobApp *JobApplication) error
 	Delete(id int64) error
+	MarkStaleApplications(ctx context.Context) (int64, error)
 }
 
 // JobApplicationModel provides methods for interacting with the job applications table in the database. It uses a connection pool to execute SQL queries and manage database connections efficiently.
@@ -214,6 +215,19 @@ func (m JobApplicationModel) Delete(id int64) error {
 	}
 
 	return err
+}
+
+func (m JobApplicationModel) MarkStaleApplications(ctx context.Context) (int64, error) {
+	query := `UPDATE applications
+						SET status = 'Ghosted'
+						WHERE stale_after < NOW()
+						AND status IN ('Applied', 'Interviewing')`
+
+	result, err := m.pool.Exec(ctx, query)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 // ValidateJobApplication checks the fields of a JobApplication struct to ensure they meet the required criteria. It uses the provided validator to collect any validation errors.

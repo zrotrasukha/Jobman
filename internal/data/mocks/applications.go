@@ -1,6 +1,7 @@
 package mocks
 
 import (
+	"context"
 	"time"
 
 	"github.com/zrotrasukha/jobman/internal/data"
@@ -9,11 +10,12 @@ import (
 var FixedDate = time.Date(2026, 8, 12, 11, 45, 0, 0, time.UTC)
 
 type MockJobApplicationModel struct {
-	InsertFunc func(jobApp *data.JobApplication) error
-	GETFunc    func(id int64) (*data.JobApplication, error)
-	GetAllFunc func(searchString string, filters data.Filters) ([]*data.JobApplication, *data.Metadata, error)
-	UpdateFunc func(jobApp *data.JobApplication) error
-	DeleteFunc func(id int64) error
+	InsertFunc                func(jobApp *data.JobApplication) error
+	GETFunc                   func(id int64) (*data.JobApplication, error)
+	GetAllFunc                func(searchString string, filters data.Filters) ([]*data.JobApplication, *data.Metadata, error)
+	UpdateFunc                func(jobApp *data.JobApplication) error
+	DeleteFunc                func(id int64) error
+	MarkStaleApplicationsFunc func(ctx context.Context) (int64, error)
 }
 
 func (m MockJobApplicationModel) Insert(jobApp *data.JobApplication) error {
@@ -105,4 +107,7 @@ func (m MockJobApplicationModel) Delete(id int64) error {
 		return nil
 	}
 	return data.ErrRecordNotFound
+}
+func (m MockJobApplicationModel) MarkStaleApplications(ctx context.Context) (int64, error) {
+	return 0, nil
 }
