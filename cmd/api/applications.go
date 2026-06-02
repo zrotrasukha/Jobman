@@ -16,6 +16,7 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 		Company_name string      `json:"company_name"`
 		RoleTitle    string      `json:"role_title"`
 		AppliedAt    string      `json:"applied_at"`
+		InterviewAt  string      `json:"interview_at"`
 		Status       data.Status `json:"status"`
 		Notes        string      `json:"notes"`
 	}
@@ -39,7 +40,24 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 		if err != nil {
 			v.AddError("applied_at", "must be a valid RFC3339 date")
 		} else {
-			application.AppliedAt = &t
+			application.AppliedAt = t
+		}
+	}
+
+	// if an interview date is provided, set the stale_after field to 5 days after the interview date. If no interview date is provided, set the stale_after field to 30 days after the applied date.
+	if input.InterviewAt != "" {
+		t, err := time.Parse(time.RFC3339, input.InterviewAt)
+		if err != nil {
+			v.AddError("interview_at", "must be a valid RFC3339 date")
+		} else {
+			application.InterviewAt = &t
+			gracePeriod := application.InterviewAt.Add(5 * 24 * time.Hour)
+			application.StaleAfter = &gracePeriod
+		}
+	} else {
+		if !application.AppliedAt.IsZero() {
+			gracePeriod := application.AppliedAt.Add(30 * 24 * time.Hour)
+			application.StaleAfter = &gracePeriod
 		}
 	}
 
@@ -148,11 +166,13 @@ func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.
 	}
 
 	var input struct {
-		Company_name *string      `json:"company_name"`
-		RoleTitle    *string      `json:"role_title"`
-		AppliedAt    *string      `json:"applied_at"`
-		Status       *data.Status `json:"status"`
-		Notes        *string      `json:"notes"`
+		Company_name      *string      `json:"company_name"`
+		RoleTitle         *string      `json:"role_title"`
+		AppliedAt         *string      `json:"applied_at"`
+		Interview_at      *string      `json:"interview_at"`
+		LastCommunication *string      `json:"last_communication"`
+		Status            *data.Status `json:"status"`
+		Notes             *string      `json:"notes"`
 	}
 
 	err = app.readJSON(w, r, &input)
@@ -164,22 +184,49 @@ func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.
 	if input.Company_name != nil {
 		application.CompanyName = *input.Company_name
 	}
+
 	if input.RoleTitle != nil {
 		application.RoleTitle = *input.RoleTitle
 	}
+
 	if input.Notes != nil {
 		application.Notes = *input.Notes
 	}
+
 	if input.Status != nil {
 		application.Status = *input.Status
 	}
+
 	if input.AppliedAt != nil {
 		t, err := time.Parse(time.RFC3339, *input.AppliedAt)
 		if err != nil {
 			app.badRequestResponse(w, r, fmt.Errorf("invalid applied_at value: %w", err))
 			return
 		}
-		application.AppliedAt = &t
+		application.AppliedAt = t
+	}
+
+	if input.LastCommunication != nil {
+		t, err := time.Parse(time.RFC3339, *input.LastCommunication)
+		if err != nil {
+			app.badRequestResponse(w, r, fmt.Errorf("invalid last_communication value: %w", err))
+			return
+		}
+		application.LastCommunication = &t
+	}
+
+	if input.Interview_at != nil {
+		t, err := time.Parse(time.RFC3339, *input.Interview_at)
+		if err != nil {
+			app.badRequestResponse(w, r, fmt.Errorf("invalid interview_at value: %w", err))
+			return
+		}
+		application.InterviewAt = &t
+	}
+
+	if input.Interview_at != nil {
+		gracePeriod := application.InterviewAt.Add(5 * 24 * time.Hour)
+		application.StaleAfter = &gracePeriod
 	}
 
 	v := validator.New()
