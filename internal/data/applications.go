@@ -17,8 +17,10 @@ type JobApplication struct {
 	CompanyName       string     `json:"company_name"`
 	RoleTitle         string     `json:"role_title"`
 	Status            Status     `json:"status"`
-	AppliedAt         *time.Time `json:"applied_at"`
+	AppliedAt         time.Time  `json:"applied_at"`
 	UpdatedAt         time.Time  `json:"updated_at"` // cannot be null
+	InterviewAt       *time.Time `json:"interview_at"`
+	StaleAfter        *time.Time `json:"stale_after"` // it is possible for this to be null if the user doesn't want the application to ever be marked as stale
 	LastCommunication *time.Time `json:"last_communication"`
 	Notes             string     `json:"notes"`
 	Version           int32      `json:"version"` // needed for optimistic locking
@@ -41,8 +43,8 @@ type JobApplicationModel struct {
 
 // Insert adds a new job application record to the database. It takes a JobApplication struct as input and populates its ID, Version, AppliedAt, and UpdatedAt fields based on the values returned from the database after the insert operation. If the insert is successful, it returns nil; otherwise, it returns an error.
 func (m JobApplicationModel) Insert(jobApp *JobApplication) error {
-	query := `INSERT INTO applications (company_name, role_title, applied_at, status, notes)
-						VALUES ($1, $2, $3, $4, $5) RETURNING id, version, applied_at, updated_at`
+	query := `INSERT INTO applications (company_name, role_title, applied_at, status, notes, interview_at, stale_after)
+						VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, version, applied_at, updated_at, interview_at, stale_after`
 
 	args := []any{
 		jobApp.CompanyName,
@@ -50,6 +52,8 @@ func (m JobApplicationModel) Insert(jobApp *JobApplication) error {
 		jobApp.AppliedAt,
 		jobApp.Status,
 		jobApp.Notes,
+		jobApp.InterviewAt,
+		jobApp.StaleAfter,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -60,6 +64,8 @@ func (m JobApplicationModel) Insert(jobApp *JobApplication) error {
 		&jobApp.Version,
 		&jobApp.AppliedAt,
 		&jobApp.UpdatedAt,
+		&jobApp.InterviewAt,
+		&jobApp.StaleAfter,
 	)
 }
 
@@ -69,7 +75,7 @@ func (m JobApplicationModel) Get(id int64) (*JobApplication, error) {
 		return nil, ErrRecordNotFound
 	}
 
-	query := `SELECT id, company_name, role_title, status, applied_at, updated_at, last_communication, notes, version
+	query := `SELECT id, company_name, role_title, status, interview_at, stale_after, applied_at,  updated_at, last_communication, notes, version
 						FROM applications
 						WHERE id = $1
 	`
@@ -84,6 +90,8 @@ func (m JobApplicationModel) Get(id int64) (*JobApplication, error) {
 		&jobApp.CompanyName,
 		&jobApp.RoleTitle,
 		&jobApp.Status,
+		&jobApp.InterviewAt,
+		&jobApp.StaleAfter,
 		&jobApp.AppliedAt,
 		&jobApp.UpdatedAt,
 		&jobApp.LastCommunication,
@@ -105,7 +113,7 @@ func (m JobApplicationModel) Get(id int64) (*JobApplication, error) {
 // GetAll returns a list of job applications matching the provided searchString and filters. It also returns metadata about the total number of records and pagination details.
 func (m JobApplicationModel) GetAll(searchString string, filters Filters) ([]*JobApplication, *Metadata, error) {
 	query := fmt.Sprintf(`
-					SELECT COUNT(*) OVER() as total_records, id, company_name, role_title, status, applied_at, updated_at, last_communication, notes, version
+					SELECT COUNT(*) OVER() as total_records, id, company_name, role_title, status, interview_at, stale_after, applied_at, updated_at, last_communication, notes, version
 					FROM applications
 					WHERE (to_tsvector('simple', company_name || ' ' || role_title) @@ plainto_tsquery('simple', $1) or $1 = '')
 					ORDER BY %s %s, id asc
@@ -138,6 +146,8 @@ func (m JobApplicationModel) GetAll(searchString string, filters Filters) ([]*Jo
 			&jobApp.CompanyName,
 			&jobApp.RoleTitle,
 			&jobApp.Status,
+			&jobApp.InterviewAt,
+			&jobApp.StaleAfter,
 			&jobApp.AppliedAt,
 			&jobApp.UpdatedAt,
 			&jobApp.LastCommunication,
@@ -163,14 +173,16 @@ func (m JobApplicationModel) GetAll(searchString string, filters Filters) ([]*Jo
 // Update modifies the details of an existing job application in the database. It uses optimistic locking to ensure that updates are only applied if the record has not been modified by another process since it was last read. If a version conflict is detected, it returns an ErrEditConflict error.
 func (m JobApplicationModel) Update(jobApp *JobApplication) error {
 	query := `UPDATE applications
-	SET company_name = $1, role_title = $2, status = $3, applied_at = $4, last_communication = $5, notes = $6, updated_at = now(), version = version + 1
-	WHERE id = $7 AND version = $8
-	RETURNING version, updated_at`
+						SET company_name = $1, role_title = $2, status = $3, interview_at = $4, stale_after = $5, applied_at = $6, last_communication = $7, notes = $8, updated_at = now(), version = version + 1
+						WHERE id = $9 AND version = $10
+						RETURNING version, updated_at`
 
 	args := []any{
 		jobApp.CompanyName,
 		jobApp.RoleTitle,
 		jobApp.Status,
+		jobApp.InterviewAt,
+		jobApp.StaleAfter,
 		jobApp.AppliedAt,
 		jobApp.LastCommunication,
 		jobApp.Notes,
@@ -242,6 +254,19 @@ func ValidateJobApplication(v *validator.Validator, jobApp *JobApplication) {
 	v.CheckField(len(jobApp.Status) <= 200, "status", "must not be more than 200 bytes long")
 	v.CheckField(jobApp.Status.IsValid(), "status", "must be a valid status")
 
-	v.CheckField(jobApp.AppliedAt != nil, "applied_at", "must be provided")
+	v.CheckField(!jobApp.AppliedAt.IsZero(), "applied_at", "must be provided")
 	v.CheckField(len(jobApp.Notes) <= 8000, "notes", "must not be more than 1000 bytes long")
+
+	// interview_at gotta be ahead the date of application or the applicant is cooked
+	v.CheckField(jobApp.InterviewAt == nil || jobApp.InterviewAt.After(jobApp.AppliedAt), "interview_at", "must be after the applied date")
+
+	// same shit for the stale_after field
+	v.CheckField(jobApp.StaleAfter == nil || jobApp.StaleAfter.After(jobApp.AppliedAt), "stale_after", "must be after the applied date")
+
+	// if the status is interviewing, then the interview_at field must be provided
+	v.CheckField(
+		jobApp.Status != StatusInterviewing || jobApp.InterviewAt != nil,
+		"interview_at",
+		"must be provided when status is Interviewing",
+	)
 }
