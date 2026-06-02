@@ -69,6 +69,8 @@ func TestCreateApplicationHandler(t *testing.T) {
 				"status": "Applied",
 				"applied_at" : "2026-08-12T11:45:00Z",
 				"updated_at" : "0001-01-01T00:00:00Z",
+				"interview_at": null,
+				"stale_after": "2026-09-11T11:45:00Z",
 				"last_communication": null,
 				"notes": "Test Notes",
 				"version": 1
@@ -159,6 +161,58 @@ func TestCreateApplicationHandler(t *testing.T) {
 			wantHeader: false,
 			wantStatus: http.StatusInternalServerError,
 			wantBody:   `{"error": "the server encountered a problem and could not process your request"}`,
+		},
+		{
+			name: "valid input with interview_at calculates 5-day staleness",
+			input: `{
+                "company_name": "Google",
+                "role_title": "Backend Engineer",
+                "status": "Interviewing",
+                "applied_at": "2026-08-12T11:45:00Z",
+                "interview_at": "2026-08-15T10:00:00Z"
+            }`,
+			mockModels: mocks.MockJobApplicationModel{
+				InsertFunc: func(jobApp *data.JobApplication) error {
+					jobApp.ID = 1
+					jobApp.Version = 1
+					return nil
+				},
+			},
+			wantHeader: true,
+			wantStatus: http.StatusCreated, // Verifies that stale_after is exactly Aug 15 + 5 days = Aug 20
+			wantBody: `{
+                "application": {
+                    "id": 1,
+                    "company_name": "Google",
+                    "role_title": "Backend Engineer",
+                    "status": "Interviewing",
+                    "applied_at": "2026-08-12T11:45:00Z",
+                    "interview_at": "2026-08-15T10:00:00Z",
+                    "stale_after": "2026-08-20T10:00:00Z",
+                    "updated_at": "0001-01-01T00:00:00Z",
+                    "last_communication": null,
+                    "notes": "",
+                    "version": 1
+                }
+            }`,
+		},
+		{
+			name: "invalid interview_at format",
+			input: `{
+                "company_name": "Google",
+                "role_title": "Backend Engineer",
+                "status": "Interviewing",
+                "applied_at": "2026-08-12T11:45:00Z",
+                "interview_at": "bad-date-format"
+            }`,
+			mockModels: mocks.MockJobApplicationModel{},
+			wantHeader: false,
+			wantStatus: http.StatusUnprocessableEntity,
+			wantBody: `{
+                "error": {
+                    "interview_at": "must be a valid RFC3339 date"
+                }
+            }`,
 		},
 	}
 
