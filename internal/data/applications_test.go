@@ -1,6 +1,7 @@
 package data_test
 
 import (
+	"context"
 	"errors"
 	"os"
 	"testing"
@@ -386,5 +387,143 @@ func TestJobApplicationModel_Delete(t *testing.T) {
 		if !errors.Is(err, data.ErrRecordNotFound) {
 			t.Errorf("want ErrRecordNotFound on double delete, got %v", err)
 		}
+	})
+}
+
+func TestJobApplicationModel_MarkStaleApplication(t *testing.T) {
+	pool := getPool(t)
+	model := data.NewJobApplicationModel(pool)
+	testhelpers.ClearApplications(t, pool)
+
+	// dates:
+	pastStale := time.Now().Add(-time.Hour)
+	futureStale := time.Now().Add(10 * 24 * time.Hour)
+
+	t.Run("mark stale applications", func(t *testing.T) {
+		testhelpers.ClearApplications(t, pool)
+
+		seed := []*data.JobApplication{
+			{
+				CompanyName: "Google",
+				RoleTitle:   "Backend Engineer",
+				Status:      "Applied",
+				AppliedAt:   date,
+				StaleAfter:  &pastStale,
+			},
+			{
+				CompanyName: "Meta",
+				RoleTitle:   "Go Developer",
+				Status:      "Applied",
+				AppliedAt:   date,
+				StaleAfter:  &futureStale,
+			},
+		}
+
+		for _, ja := range seed {
+			err := model.Insert(ja)
+			if err != nil {
+				t.Fatalf("Error inserting seeds %v", err)
+			}
+		}
+
+		rowsAffected, err := model.MarkStaleApplications(context.Background())
+		if err != nil {
+			t.Fatalf("Error running MarkStaleApplications: %v", err)
+		}
+
+		assert.Equal(t, rowsAffected, int64(1))
+
+		apps, _, err := model.GetAll("", data.Filters{
+			Page:         1,
+			PageSize:     20,
+			Sort:         "id",
+			SortSafeList: []string{"id"},
+		})
+		if err != nil {
+			t.Fatalf("Error running GetAll(): %v", err)
+		}
+
+		assert.Equal(t, apps[0].Status, "Ghosted")
+		assert.Equal(t, apps[1].Status, "Applied")
+	})
+
+	t.Run("terminal status not affected", func(t *testing.T) {
+		testhelpers.ClearApplications(t, pool)
+
+		seeds := []*data.JobApplication{
+			{
+				CompanyName: "Google",
+				RoleTitle:   "Backend Engineer",
+				Status:      data.StatusOffered,
+				AppliedAt:   date,
+				StaleAfter:  &pastStale,
+			},
+			{
+				CompanyName: "Meta",
+				RoleTitle:   "Go Developer",
+				Status:      data.StatusRejected,
+				AppliedAt:   date,
+				StaleAfter:  &pastStale,
+			},
+		}
+
+		for _, seed := range seeds {
+			err := model.Insert(seed)
+			if err != nil {
+				t.Fatalf("Error inserting seeds %v", err)
+			}
+		}
+
+		rowsAffected, err := model.MarkStaleApplications(context.Background())
+		if err != nil {
+			t.Fatalf("Error running MarkStaleApplications: %v", err)
+		}
+
+		assert.Equal(t, rowsAffected, int64(0))
+	})
+
+	t.Run("already ghosted not affected", func(t *testing.T) {
+		testhelpers.ClearApplications(t, pool)
+		seed := []*data.JobApplication{
+			{
+				CompanyName: "Google",
+				RoleTitle:   "Backend Engineer",
+				Status:      data.StatusGhosted,
+				AppliedAt:   date,
+				StaleAfter:  &pastStale,
+			},
+			{
+				CompanyName: "Meta",
+				RoleTitle:   "Go Developer",
+				Status:      data.StatusGhosted,
+				AppliedAt:   date,
+				StaleAfter:  &pastStale,
+			},
+		}
+
+		for _, seed := range seed {
+			err := model.Insert(seed)
+			if err != nil {
+				t.Fatalf("Error inserting seeds %v", err)
+			}
+		}
+
+		rowsAffected, err := model.MarkStaleApplications(context.Background())
+		if err != nil {
+			t.Fatalf("Error running MarkStaleApplications: %v", err)
+		}
+
+		assert.Equal(t, rowsAffected, int64(0))
+	})
+
+	t.Run("zero applications to update", func(t *testing.T) {
+		testhelpers.ClearApplications(t, pool)
+
+		rowsAffected, err := model.MarkStaleApplications(context.Background())
+		if err != nil {
+			t.Fatalf("Error running MarkStaleApplications: %v", err)
+		}
+
+		assert.Equal(t, rowsAffected, int64(0))
 	})
 }
