@@ -25,7 +25,7 @@ func (m MockJobApplicationModel) Insert(jobApp *data.JobApplication) error {
 	jobApp.ID = 1
 	jobApp.CompanyName = "Test Company"
 	jobApp.UpdatedAt = FixedDate
-	jobApp.AppliedAt = &FixedDate
+	jobApp.AppliedAt = FixedDate
 	jobApp.RoleTitle = "Test Role"
 	jobApp.Status = data.StatusApplied
 	jobApp.Notes = "Test Notes"
@@ -44,7 +44,7 @@ func (m MockJobApplicationModel) Get(id int64) (*data.JobApplication, error) {
 			CompanyName: "Test Company",
 			RoleTitle:   "Test Role",
 			Status:      data.StatusApplied,
-			AppliedAt:   &FixedDate,
+			AppliedAt:   FixedDate,
 			UpdatedAt:   FixedDate,
 			Notes:       "Test Notes",
 			Version:     1,
@@ -64,7 +64,7 @@ func (m MockJobApplicationModel) GetAll(searchString string, filters data.Filter
 			CompanyName: "Test Company 1",
 			RoleTitle:   "Test Role 1",
 			Status:      data.StatusApplied,
-			AppliedAt:   &FixedDate,
+			AppliedAt:   FixedDate,
 			UpdatedAt:   FixedDate,
 			Notes:       "Test Notes 1",
 			Version:     1,
@@ -74,7 +74,7 @@ func (m MockJobApplicationModel) GetAll(searchString string, filters data.Filter
 			CompanyName: "Test Company 2",
 			RoleTitle:   "Test Role 2",
 			Status:      data.StatusInterviewing,
-			AppliedAt:   &FixedDate,
+			AppliedAt:   FixedDate,
 			UpdatedAt:   FixedDate,
 			Notes:       "Test Notes 2",
 			Version:     1,

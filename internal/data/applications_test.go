@@ -46,7 +46,7 @@ func TestJobApplicationModel_Insert(t *testing.T) {
 		CompanyName: "Test Company",
 		RoleTitle:   "Test Role",
 		Status:      "Applied",
-		AppliedAt:   &date,
+		AppliedAt:   date,
 		Notes:       "This is a test job application.",
 	}
 	err := model.Insert(inserted)
@@ -72,7 +72,7 @@ func TestJobApplicationModel_Get(t *testing.T) {
 			CompanyName: "Test Company",
 			RoleTitle:   "Test Role",
 			Status:      "Applied",
-			AppliedAt:   &now,
+			AppliedAt:   now,
 			Notes:       "This is a test job application.",
 		}
 
@@ -117,7 +117,7 @@ func TestJobApplicationModel_Update(t *testing.T) {
 			CompanyName: "Test Company",
 			RoleTitle:   "Test Role",
 			Status:      "Applied",
-			AppliedAt:   &date,
+			AppliedAt:   date,
 			Notes:       "This is a test job application.",
 		}
 
@@ -148,7 +148,7 @@ func TestJobApplicationModel_Update(t *testing.T) {
 			CompanyName: "Test Company",
 			RoleTitle:   "Test Role",
 			Status:      "Applied",
-			AppliedAt:   &date,
+			AppliedAt:   date,
 			Notes:       "This is a test job application.",
 		}
 
@@ -182,7 +182,7 @@ func TestJobApplicationModel_Update(t *testing.T) {
 			CompanyName: "Test Company",
 			RoleTitle:   "Test Role",
 			Status:      "Applied",
-			AppliedAt:   &date,
+			AppliedAt:   date,
 			Notes:       "This is a test job application.",
 		}
 
@@ -198,9 +198,9 @@ func TestJobApplicationModel_GetAll(t *testing.T) {
 	model := data.NewJobApplicationModel(pool)
 
 	seeds := []*data.JobApplication{
-		{CompanyName: "Google", RoleTitle: "Backend Engineer", Status: "Applied", AppliedAt: &date},
-		{CompanyName: "Meta", RoleTitle: "Go Developer", Status: "Interviewing", AppliedAt: &date},
-		{CompanyName: "Small Startup", RoleTitle: "Software Engineer", Status: "Rejected", AppliedAt: &date},
+		{CompanyName: "Google", RoleTitle: "Backend Engineer", Status: "Applied", AppliedAt: date},
+		{CompanyName: "Meta", RoleTitle: "Go Developer", Status: "Interviewing", AppliedAt: date},
+		{CompanyName: "Small Startup", RoleTitle: "Software Engineer", Status: "Rejected", AppliedAt: date},
 	}
 
 	for _, ja := range seeds {
@@ -342,7 +342,7 @@ func TestJobApplicationModel_Delete(t *testing.T) {
 			CompanyName: "Test Company",
 			RoleTitle:   "Test Role",
 			Status:      "Applied",
-			AppliedAt:   &date,
+			AppliedAt:   date,
 			Notes:       "This is a test job application.",
 		}
 
@@ -377,7 +377,7 @@ func TestJobApplicationModel_Delete(t *testing.T) {
 			CompanyName: "Test Company",
 			RoleTitle:   "Test Role",
 			Status:      "Applied",
-			AppliedAt:   &date,
+			AppliedAt:   date,
 		}
 		model.Insert(inserted)
 		model.Delete(inserted.ID) // first delete
