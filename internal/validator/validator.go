@@ -1,39 +1,51 @@
 package validator
 
-import "slices"
+import (
+	"regexp"
+	"slices"
+)
 
-// Validator struct is used to collect validation errors for various fields. It contains a map where the keys are the field names and the values are the corresponding error messages. The struct provides methods to add errors, check field validity, and determine if the overall validation is successful (i.e., if there are no errors).
+var (
+	EmailRX = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+)
+
+// Validator struct hold the Errors map, which is used to store validtion errors
 type Validator struct {
 	Errors map[string]string
 }
 
-// New creates and returns a new instance of the Validator struct with an initialized Errors map. This allows for collecting validation errors as they are added during the validation process.
+// Validator returns a new instance of Validator struct with empty Errors map.
 func New() *Validator {
 	return &Validator{
 		Errors: make(map[string]string),
 	}
 }
 
-// AddError adds an error message to the Errors map for a specific field (key). If an error for that field already exists, it does not overwrite it, ensuring that only the first error message for each field is retained.
+// AddError adds an error message to the Errors map for a specific key. If an error message already exists for the given key, it does not overwrite it
 func (v *Validator) AddError(key, message string) {
 	if _, exists := v.Errors[key]; !exists {
 		v.Errors[key] = message
 	}
 }
 
-// CheckField evaluates a boolean condition (ok) for a specific field (key). If the condition is false, it adds an error message to the Errors map for that field using the AddError method. This method is typically used to validate individual fields and collect any errors that occur during the validation process.
+// Checkfield checks for any condition beign false. If false, it adds the error message to the Errors map for the specified key.
 func (v *Validator) CheckField(ok bool, key, message string) {
 	if !ok {
 		v.AddError(key, message)
 	}
 }
 
-// Valid checks if there are any validation errors collected in the Errors map. It returns true if there are no errors (i.e., the length of the Errors map is zero), indicating that the validation was successful. If there are any errors, it returns false, indicating that the validation failed.
+// Valid returns length of errors in Errors map.
 func (v *Validator) Valid() bool {
 	return len(v.Errors) == 0
 }
 
-// PermittedValues is a generic function that checks if a given value is included in a list of permitted values. It uses the slices.Contains function from the standard library to determine if the value exists in the provided slice of permitted values. The function returns true if the value is found in the slice, and false otherwise. This is commonly used for validating that a field's value is one of a predefined set of acceptable options.
+// PermittedValues is a generic function that checks if a given value in given list of permitted values.
 func PermittedValues[T comparable](value T, permittedValues ...T) bool {
 	return slices.Contains(permittedValues, value)
+}
+
+// Matches checks if a string matches a given regular expression pattern. It returns true if the string matches the pattern, and false otherwise.
+func Matches(value string, rx *regexp.Regexp) bool {
+	return rx.MatchString(value)
 }
