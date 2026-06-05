@@ -14,15 +14,13 @@ var (
 // Models wraps all database models for easy dependency injection.
 type Models struct {
 	Application JobApplicationModelInterface
+	User        UserModelInterface
 }
 
 // NewModels initializes and returns a Models struct with all DB repositories.
 func NewModels(pool *pgxpool.Pool) Models {
 	return Models{
-		Application: NewJobApplicationModel(pool),
+		Application: JobApplicationModel{pool: pool},
+		User:        UserModel{pool: pool},
 	}
-}
-
-func NewJobApplicationModel(pool *pgxpool.Pool) JobApplicationModel {
-	return JobApplicationModel{pool: pool}
 }
