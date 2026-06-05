@@ -3,45 +3,25 @@ package data_test
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zrotrasukha/jobman/internal/assert"
 	"github.com/zrotrasukha/jobman/internal/data"
 	testhelpers "github.com/zrotrasukha/jobman/internal/test_helpers"
 )
 
-var (
-	sharedPool *pgxpool.Pool
-	date       = time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC)
-)
-
-func TestMain(m *testing.M) {
-	pool, terminate := testhelpers.NewTestPool()
-	sharedPool = pool
-
-	code := m.Run()
-
-	terminate()
-	os.Exit(code)
-}
-
-func getPool(t *testing.T) *pgxpool.Pool {
-	t.Helper()
-	return sharedPool
-}
+var date = time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC)
 
 // NOTE: There is only one test case written for TestJobApplicationModel_Insert
 // because all the input validation happens in the api layer, which are being taken
 // care of in the cmd/api/handlers_test.go file
 
 func TestJobApplicationModel_Insert(t *testing.T) {
-	pool := getPool(t)
-	testhelpers.ClearApplications(t, pool)
+	pool := testhelpers.GetPool(t)
+	testhelpers.TruncateTable(t, pool, testhelpers.TableApplications)
 
-	model := data.NewJobApplicationModel(pool)
+	model := data.NewModels(pool)
 
 	inserted := &data.JobApplication{
 		CompanyName: "Test Company",
@@ -50,7 +30,7 @@ func TestJobApplicationModel_Insert(t *testing.T) {
 		AppliedAt:   date,
 		Notes:       "This is a test job application.",
 	}
-	err := model.Insert(inserted)
+	err := model.Application.Insert(inserted)
 	if err != nil {
 		t.Fatalf("inserted() returned an error: %v", err)
 	}
@@ -61,10 +41,10 @@ func TestJobApplicationModel_Insert(t *testing.T) {
 }
 
 func TestJobApplicationModel_Get(t *testing.T) {
-	pool := getPool(t)
-	model := data.NewJobApplicationModel(pool)
+	pool := testhelpers.GetPool(t)
+	model := data.NewModels(pool)
 
-	testhelpers.ClearApplications(t, pool)
+	testhelpers.TruncateTable(t, pool, testhelpers.TableApplications)
 
 	var now = time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC)
 
@@ -77,11 +57,11 @@ func TestJobApplicationModel_Get(t *testing.T) {
 			Notes:       "This is a test job application.",
 		}
 
-		if err := model.Insert(inserted); err != nil {
+		if err := model.Application.Insert(inserted); err != nil {
 			t.Fatalf("Error setting up insert %v", err)
 		}
 
-		got, err := model.Get(inserted.ID)
+		got, err := model.Application.Get(inserted.ID)
 		if err != nil {
 			t.Fatal("Error running model.Get()")
 		}
@@ -93,14 +73,14 @@ func TestJobApplicationModel_Get(t *testing.T) {
 	})
 
 	t.Run("Non-existent ID", func(t *testing.T) {
-		_, err := model.Get(999999)
+		_, err := model.Application.Get(999999)
 		if !errors.Is(err, data.ErrRecordNotFound) {
 			t.Errorf("want ErrRecordNotFound, got %v", err)
 		}
 	})
 
 	t.Run("Invalid ID", func(t *testing.T) {
-		_, err := model.Get(-1)
+		_, err := model.Application.Get(-1)
 		if !errors.Is(err, data.ErrRecordNotFound) {
 			t.Errorf("want ErrRecordNotFound, got %v", err)
 		}
@@ -108,10 +88,10 @@ func TestJobApplicationModel_Get(t *testing.T) {
 }
 
 func TestJobApplicationModel_Update(t *testing.T) {
-	pool := getPool(t)
-	model := data.NewJobApplicationModel(pool)
+	pool := testhelpers.GetPool(t)
+	model := data.NewModels(pool)
 
-	testhelpers.ClearApplications(t, pool)
+	testhelpers.TruncateTable(t, pool, testhelpers.TableApplications)
 
 	t.Run("successful update", func(t *testing.T) {
 		inserted := &data.JobApplication{
@@ -122,18 +102,18 @@ func TestJobApplicationModel_Update(t *testing.T) {
 			Notes:       "This is a test job application.",
 		}
 
-		err := model.Insert(inserted)
+		err := model.Application.Insert(inserted)
 		if err != nil {
 			t.Fatalf("Error inserting: %v", err)
 		}
 
 		inserted.CompanyName = "Changed Company"
 
-		if err = model.Update(inserted); err != nil {
+		if err = model.Application.Update(inserted); err != nil {
 			t.Fatalf("Error updating: %v", err)
 		}
 
-		got, err := model.Get(inserted.ID)
+		got, err := model.Application.Get(inserted.ID)
 		if err != nil {
 			t.Fatalf("Error fetching inserted job application: %v", err)
 		}
@@ -143,7 +123,7 @@ func TestJobApplicationModel_Update(t *testing.T) {
 	})
 
 	t.Run("Optimistic Locking", func(t *testing.T) {
-		testhelpers.ClearApplications(t, pool)
+		testhelpers.TruncateTable(t, pool, testhelpers.TableApplications)
 
 		inserted := &data.JobApplication{
 			CompanyName: "Test Company",
@@ -153,30 +133,30 @@ func TestJobApplicationModel_Update(t *testing.T) {
 			Notes:       "This is a test job application.",
 		}
 
-		err := model.Insert(inserted)
+		err := model.Application.Insert(inserted)
 		if err != nil {
 			t.Fatalf("Error inserting: %v", err)
 		}
 
-		v1, _ := model.Get(inserted.ID)
-		v2, _ := model.Get(inserted.ID)
+		v1, _ := model.Application.Get(inserted.ID)
+		v2, _ := model.Application.Get(inserted.ID)
 
 		v1.CompanyName = "Changed Company"
 
-		if err = model.Update(v1); err != nil {
+		if err = model.Application.Update(v1); err != nil {
 			t.Fatalf("Error updating v1: %v", err)
 		}
 
 		v2.RoleTitle = "Changed role"
 
-		err = model.Update(v2)
+		err = model.Application.Update(v2)
 		if !errors.Is(err, data.ErrEditConflict) {
 			t.Fatalf("want: ErrEditConflict, go: %v ", err)
 		}
 	})
 
 	t.Run("invalid ID", func(t *testing.T) {
-		testhelpers.ClearApplications(t, pool)
+		testhelpers.TruncateTable(t, pool, testhelpers.TableApplications)
 
 		inserted := &data.JobApplication{
 			ID:          999999,
@@ -187,7 +167,7 @@ func TestJobApplicationModel_Update(t *testing.T) {
 			Notes:       "This is a test job application.",
 		}
 
-		err := model.Update(inserted)
+		err := model.Application.Update(inserted)
 		if !errors.Is(err, data.ErrEditConflict) {
 			t.Fatalf("want: ErrEditConflict, go: %v ", err)
 		}
@@ -195,8 +175,8 @@ func TestJobApplicationModel_Update(t *testing.T) {
 }
 
 func TestJobApplicationModel_GetAll(t *testing.T) {
-	pool := getPool(t)
-	model := data.NewJobApplicationModel(pool)
+	pool := testhelpers.GetPool(t)
+	model := data.NewModels(pool)
 
 	seeds := []*data.JobApplication{
 		{CompanyName: "Google", RoleTitle: "Backend Engineer", Status: "Applied", AppliedAt: date},
@@ -205,7 +185,7 @@ func TestJobApplicationModel_GetAll(t *testing.T) {
 	}
 
 	for _, ja := range seeds {
-		err := model.Insert(ja)
+		err := model.Application.Insert(ja)
 		if err != nil {
 			t.Fatalf("Error inserting seeds %v", err)
 		}
@@ -220,7 +200,7 @@ func TestJobApplicationModel_GetAll(t *testing.T) {
 
 	t.Run("All results", func(t *testing.T) {
 
-		applications, metadata, err := model.GetAll("", baseFilters)
+		applications, metadata, err := model.Application.GetAll("", baseFilters)
 		if err != nil {
 			t.Fatalf("error running GetAll(): %v", err)
 		}
@@ -230,7 +210,7 @@ func TestJobApplicationModel_GetAll(t *testing.T) {
 	})
 
 	t.Run("Company based full text search", func(t *testing.T) {
-		applications, metadata, err := model.GetAll("google", baseFilters)
+		applications, metadata, err := model.Application.GetAll("google", baseFilters)
 		if err != nil {
 			t.Fatalf("Error running GetAll(): %v", err)
 		}
@@ -240,7 +220,7 @@ func TestJobApplicationModel_GetAll(t *testing.T) {
 	})
 
 	t.Run("Role based full text search", func(t *testing.T) {
-		applications, metadata, err := model.GetAll("Go Developer", baseFilters)
+		applications, metadata, err := model.Application.GetAll("Go Developer", baseFilters)
 		if err != nil {
 			t.Fatalf("Error running GetAll(): %v", err)
 		}
@@ -250,7 +230,7 @@ func TestJobApplicationModel_GetAll(t *testing.T) {
 	})
 
 	t.Run("no results for unmatched search", func(t *testing.T) {
-		_, metadata, err := model.GetAll("thought police", baseFilters)
+		_, metadata, err := model.Application.GetAll("thought police", baseFilters)
 		if err != nil {
 			t.Fatalf("Error running GetAll(): %v", err)
 		}
@@ -267,7 +247,7 @@ func TestJobApplicationModel_GetAll(t *testing.T) {
 			SortSafeList: []string{"id"},
 		}
 
-		applications, metadata, err := model.GetAll("", f)
+		applications, metadata, err := model.Application.GetAll("", f)
 		if err != nil {
 			t.Fatalf("error running GetAll(): %v", err)
 		}
@@ -285,7 +265,7 @@ func TestJobApplicationModel_GetAll(t *testing.T) {
 			Sort:         "id",
 			SortSafeList: []string{"id"},
 		}
-		applications, metadata, err := model.GetAll("", f)
+		applications, metadata, err := model.Application.GetAll("", f)
 		if err != nil {
 			t.Fatalf("error running GetAll(): %v", err)
 		}
@@ -303,7 +283,7 @@ func TestJobApplicationModel_GetAll(t *testing.T) {
 			SortSafeList: []string{"id", "company_name"},
 		}
 
-		apps, _, err := model.GetAll("", f)
+		apps, _, err := model.Application.GetAll("", f)
 		if err != nil {
 			t.Fatalf("error running GetAll(): %v", err)
 		}
@@ -320,7 +300,7 @@ func TestJobApplicationModel_GetAll(t *testing.T) {
 			SortSafeList: []string{"id", "-company_name"},
 		}
 
-		apps, _, err := model.GetAll("", f)
+		apps, _, err := model.Application.GetAll("", f)
 		if err != nil {
 			t.Fatalf("error running GetAll(): %v", err)
 		}
@@ -333,11 +313,11 @@ func TestJobApplicationModel_GetAll(t *testing.T) {
 }
 
 func TestJobApplicationModel_Delete(t *testing.T) {
-	pool := getPool(t)
-	model := data.NewJobApplicationModel(pool)
+	pool := testhelpers.GetPool(t)
+	model := data.NewModels(pool)
 
 	t.Run("successful delete", func(t *testing.T) {
-		testhelpers.ClearApplications(t, pool)
+		testhelpers.TruncateTable(t, pool, testhelpers.TableApplications)
 
 		inserted := &data.JobApplication{
 			CompanyName: "Test Company",
@@ -347,17 +327,17 @@ func TestJobApplicationModel_Delete(t *testing.T) {
 			Notes:       "This is a test job application.",
 		}
 
-		err := model.Insert(inserted)
+		err := model.Application.Insert(inserted)
 		if err != nil {
 			t.Fatalf("Error inserting: %v", err)
 		}
 
-		err = model.Delete(inserted.ID)
+		err = model.Application.Delete(inserted.ID)
 		if err != nil {
 			t.Fatalf("Error deleting: %v", err)
 		}
 
-		_, err = model.Get(inserted.ID)
+		_, err = model.Application.Get(inserted.ID)
 		if !errors.Is(err, data.ErrRecordNotFound) {
 			t.Errorf("want ErrRecordNotFound after delete, got %v", err)
 		}
@@ -365,7 +345,7 @@ func TestJobApplicationModel_Delete(t *testing.T) {
 
 	t.Run("Invalid Id delete", func(t *testing.T) {
 		t.Run("Invalid ID", func(t *testing.T) {
-			err := model.Delete(-1)
+			err := model.Application.Delete(-1)
 			if !errors.Is(err, data.ErrRecordNotFound) {
 				t.Errorf("want ErrRecordNotFound for invalid id, got %v", err)
 			}
@@ -373,17 +353,17 @@ func TestJobApplicationModel_Delete(t *testing.T) {
 	})
 
 	t.Run("Double delete", func(t *testing.T) {
-		testhelpers.ClearApplications(t, pool)
+		testhelpers.TruncateTable(t, pool, testhelpers.TableApplications)
 		inserted := &data.JobApplication{
 			CompanyName: "Test Company",
 			RoleTitle:   "Test Role",
 			Status:      "Applied",
 			AppliedAt:   date,
 		}
-		model.Insert(inserted)
-		model.Delete(inserted.ID) // first delete
+		model.Application.Insert(inserted)
+		model.Application.Delete(inserted.ID) // first delete
 
-		err := model.Delete(inserted.ID) // second delete
+		err := model.Application.Delete(inserted.ID) // second delete
 		if !errors.Is(err, data.ErrRecordNotFound) {
 			t.Errorf("want ErrRecordNotFound on double delete, got %v", err)
 		}
@@ -391,16 +371,16 @@ func TestJobApplicationModel_Delete(t *testing.T) {
 }
 
 func TestJobApplicationModel_MarkStaleApplication(t *testing.T) {
-	pool := getPool(t)
-	model := data.NewJobApplicationModel(pool)
-	testhelpers.ClearApplications(t, pool)
+	pool := testhelpers.GetPool(t)
+	model := data.NewModels(pool)
+	testhelpers.TruncateTable(t, pool, testhelpers.TableApplications)
 
 	// dates:
 	pastStale := time.Now().Add(-time.Hour)
 	futureStale := time.Now().Add(10 * 24 * time.Hour)
 
 	t.Run("mark stale applications", func(t *testing.T) {
-		testhelpers.ClearApplications(t, pool)
+		testhelpers.TruncateTable(t, pool, testhelpers.TableApplications)
 
 		seed := []*data.JobApplication{
 			{
@@ -420,20 +400,20 @@ func TestJobApplicationModel_MarkStaleApplication(t *testing.T) {
 		}
 
 		for _, ja := range seed {
-			err := model.Insert(ja)
+			err := model.Application.Insert(ja)
 			if err != nil {
 				t.Fatalf("Error inserting seeds %v", err)
 			}
 		}
 
-		rowsAffected, err := model.MarkStaleApplications(context.Background())
+		rowsAffected, err := model.Application.MarkStaleApplications(context.Background())
 		if err != nil {
 			t.Fatalf("Error running MarkStaleApplications: %v", err)
 		}
 
 		assert.Equal(t, rowsAffected, int64(1))
 
-		apps, _, err := model.GetAll("", data.Filters{
+		apps, _, err := model.Application.GetAll("", data.Filters{
 			Page:         1,
 			PageSize:     20,
 			Sort:         "id",
@@ -448,7 +428,7 @@ func TestJobApplicationModel_MarkStaleApplication(t *testing.T) {
 	})
 
 	t.Run("terminal status not affected", func(t *testing.T) {
-		testhelpers.ClearApplications(t, pool)
+		testhelpers.TruncateTable(t, pool, testhelpers.TableApplications)
 
 		seeds := []*data.JobApplication{
 			{
@@ -468,13 +448,13 @@ func TestJobApplicationModel_MarkStaleApplication(t *testing.T) {
 		}
 
 		for _, seed := range seeds {
-			err := model.Insert(seed)
+			err := model.Application.Insert(seed)
 			if err != nil {
 				t.Fatalf("Error inserting seeds %v", err)
 			}
 		}
 
-		rowsAffected, err := model.MarkStaleApplications(context.Background())
+		rowsAffected, err := model.Application.MarkStaleApplications(context.Background())
 		if err != nil {
 			t.Fatalf("Error running MarkStaleApplications: %v", err)
 		}
@@ -483,7 +463,7 @@ func TestJobApplicationModel_MarkStaleApplication(t *testing.T) {
 	})
 
 	t.Run("already ghosted not affected", func(t *testing.T) {
-		testhelpers.ClearApplications(t, pool)
+		testhelpers.TruncateTable(t, pool, testhelpers.TableApplications)
 		seed := []*data.JobApplication{
 			{
 				CompanyName: "Google",
@@ -502,13 +482,13 @@ func TestJobApplicationModel_MarkStaleApplication(t *testing.T) {
 		}
 
 		for _, seed := range seed {
-			err := model.Insert(seed)
+			err := model.Application.Insert(seed)
 			if err != nil {
 				t.Fatalf("Error inserting seeds %v", err)
 			}
 		}
 
-		rowsAffected, err := model.MarkStaleApplications(context.Background())
+		rowsAffected, err := model.Application.MarkStaleApplications(context.Background())
 		if err != nil {
 			t.Fatalf("Error running MarkStaleApplications: %v", err)
 		}
@@ -517,9 +497,9 @@ func TestJobApplicationModel_MarkStaleApplication(t *testing.T) {
 	})
 
 	t.Run("zero applications to update", func(t *testing.T) {
-		testhelpers.ClearApplications(t, pool)
+		testhelpers.TruncateTable(t, pool, testhelpers.TableApplications)
 
-		rowsAffected, err := model.MarkStaleApplications(context.Background())
+		rowsAffected, err := model.Application.MarkStaleApplications(context.Background())
 		if err != nil {
 			t.Fatalf("Error running MarkStaleApplications: %v", err)
 		}
