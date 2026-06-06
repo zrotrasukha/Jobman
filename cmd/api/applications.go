@@ -68,7 +68,7 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 
 	err = app.models.Application.Insert(application)
 	if err != nil {
-		app.serverErrResponse(w, r)
+		app.serverErrResponse(w, r, err)
 		return
 	}
 
@@ -77,7 +77,7 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 
 	err = app.writeJSON(w, http.StatusCreated, envelop{"application": application}, header)
 	if err != nil {
-		app.serverErrResponse(w, r)
+		app.serverErrResponse(w, r, err)
 	}
 }
 
@@ -105,13 +105,13 @@ func (app *application) ListApplicationHandler(w http.ResponseWriter, r *http.Re
 
 	applications, metadata, err := app.models.Application.GetAll(input.Search, input.Filters)
 	if err != nil {
-		app.serverErrResponse(w, r)
+		app.serverErrResponse(w, r, err)
 		return
 	}
 
 	err = app.writeJSON(w, http.StatusOK, envelop{"applications": applications, "metadata": metadata}, nil)
 	if err != nil {
-		app.serverErrResponse(w, r)
+		app.serverErrResponse(w, r, err)
 	}
 
 }
@@ -131,14 +131,14 @@ func (app *application) GetApplicationHandler(w http.ResponseWriter, r *http.Req
 			app.notFoundResponse(w, r)
 			return
 		default:
-			app.serverErrResponse(w, r)
+			app.serverErrResponse(w, r, err)
 			return
 		}
 	}
 
 	err = app.writeJSON(w, http.StatusOK, envelop{"application": application}, nil)
 	if err != nil {
-		app.serverErrResponse(w, r)
+		app.serverErrResponse(w, r, err)
 	}
 
 }
@@ -160,7 +160,7 @@ func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.
 			app.notFoundResponse(w, r)
 			return
 		default:
-			app.serverErrResponse(w, r)
+			app.serverErrResponse(w, r, err)
 			return
 		}
 	}
@@ -243,14 +243,14 @@ func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.
 			app.editConflictResponse(w, r)
 			return
 		default:
-			app.serverErrResponse(w, r)
+			app.serverErrResponse(w, r, err)
 			return
 		}
 	}
 
 	err = app.writeJSON(w, http.StatusOK, envelop{"application": application}, nil)
 	if err != nil {
-		app.serverErrResponse(w, r)
+		app.serverErrResponse(w, r, err)
 	}
 }
 
@@ -269,14 +269,14 @@ func (app *application) DeleteApplicationHandler(w http.ResponseWriter, r *http.
 			app.notFoundResponse(w, r)
 			return
 		default:
-			app.serverErrResponse(w, r)
+			app.serverErrResponse(w, r, err)
 			return
 		}
 	}
 
 	err = app.writeJSON(w, http.StatusOK, envelop{"message": "application successfully deleted"}, nil)
 	if err != nil {
-		app.serverErrResponse(w, r)
+		app.serverErrResponse(w, r, err)
 	}
 
 }
