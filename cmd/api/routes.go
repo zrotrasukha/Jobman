@@ -6,7 +6,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// routes sets up the HTTP routes for the application. It returns a mux which is being consumed in serve.go. The mux is configured to handle various HTTP methods and paths, and it also includes a custom NotFound handler for any routes that are not defined.
+// routes sets up the router and a http.Handler.
 func (app *application) routes() http.Handler {
 	mux := httprouter.New()
 	mux.NotFound = http.HandlerFunc(app.notFoundResponse)
@@ -18,5 +18,7 @@ func (app *application) routes() http.Handler {
 	mux.HandlerFunc(http.MethodPut, "/v1/applications/:id", app.UpdateApplicationHandler)
 	mux.HandlerFunc(http.MethodDelete, "/v1/applications/:id", app.DeleteApplicationHandler)
 
-	return app.reqLogger(mux)
+	mux.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
+
+	return app.recoverPanic(app.reqLogger(mux))
 }
