@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -115,4 +117,37 @@ func (app *application) readInt(qs url.Values, key string, defaultValue int) int
 	}
 
 	return i
+}
+
+func (app *application) runPeriodic(ctx context.Context, name string, duration time.Duration, fn func() error) error {
+	ticker := time.NewTicker(duration)
+	defer ticker.Stop()
+
+	app.logger.Info("starting background worker", "name", name)
+
+	for {
+		if err := fn(); err != nil {
+			app.logger.Info("background worker error", "name", name, "error", err)
+		}
+
+		select {
+		case <-ticker.C:
+			continue
+		case <-ctx.Done():
+			app.logger.Info("background worker shutting down")
+			return nil
+		}
+	}
+}
+
+func (app *application) background(fn func()) {
+	app.wg.Go(func() {
+		defer func() {
+			if r := recover(); r != nil {
+				app.logger.Error("background worker panicked", "error", fmt.Sprintf("%v", r))
+			}
+		}()
+
+		fn()
+	})
 }
