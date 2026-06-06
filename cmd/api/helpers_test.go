@@ -90,7 +90,7 @@ func TestReadJSON(t *testing.T) {
 		},
 	}
 	app := newTestApplication()
-	ts := newTestServer(t, mocks.MockJobApplicationModel{})
+	ts := newTestServer(t, mocks.NewMockModels())
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
