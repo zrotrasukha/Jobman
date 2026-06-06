@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/zrotrasukha/jobman/internal/data"
 	"github.com/zrotrasukha/jobman/internal/data/mocks"
 )
 
@@ -26,9 +27,9 @@ type testServer struct {
 	*httptest.Server
 }
 
-func newTestServer(t *testing.T, model mocks.MockJobApplicationModel) *testServer {
+func newTestServer(t *testing.T, model data.Models) *testServer {
 	app := newTestApplication()
-	app.models.Application = model
+	app.models = model
 
 	ts := httptest.NewServer(app.routes())
 	t.Cleanup(ts.Close)
