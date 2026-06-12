@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zrotrasukha/jobman/internal/data"
+	"github.com/zrotrasukha/jobman/internal/mailer"
 )
 
 var version = "1.0.0"
@@ -24,6 +25,13 @@ type config struct {
 		minIdleConns int
 		maxIdleTime  time.Duration
 	}
+	mailer struct {
+		sender   string
+		host     string
+		port     int
+		username string
+		password string
+	}
 }
 
 type application struct {
@@ -31,6 +39,7 @@ type application struct {
 	logger *slog.Logger
 	models data.Models
 	wg     sync.WaitGroup
+	mailer *mailer.Mailer
 }
 
 // openDB establishes a connection pool to the PostgreSQL database using the provided configuration. It sets the maximum number of open connections, minimum number of idle connections, and maximum idle time for the connections in the pool. The function also performs a ping to the database to ensure that the connection is valid before returning the pool. If any errors occur during this process, they are returned to the caller.
@@ -72,6 +81,12 @@ func main() {
 	flag.IntVar(&cfg.db.minIdleConns, "db-min-idle-conns", 25, "PostgreSQL min idle connections")
 	flag.DurationVar(&cfg.db.maxIdleTime, "db-max-idle-time", 15*time.Minute, "PostgreSQL max connection idle time")
 
+	flag.StringVar(&cfg.mailer.sender, "mailer-sender", os.Getenv("MAILER_SENDER"), "Mailer sender")
+	flag.StringVar(&cfg.mailer.host, "mailer-host", os.Getenv("MAILER_HOST"), "Mailer host")
+	flag.IntVar(&cfg.mailer.port, "mailer-port", 587, "Mailer port")
+	flag.StringVar(&cfg.mailer.username, "mailer-username", os.Getenv("MAILER_USERNAME"), "Mailer username")
+	flag.StringVar(&cfg.mailer.password, "mailer-password", os.Getenv("MAILER_PASSWORD"), "Mailer password")
+
 	displayVersion := flag.Bool("version", false, "Display version and exit")
 
 	flag.Parse()
@@ -90,11 +105,18 @@ func main() {
 	defer db.Close()
 	logger.Info("database connection pool established")
 
+	mailer, err := mailer.New(cfg.mailer.host, cfg.mailer.port, cfg.mailer.username, cfg.mailer.password, cfg.mailer.sender)
+	if err != nil {
+		log.Fatal(err)
+	}
+	logger.Info("mailer initialized")
+
 	app := &application{
 		config: cfg,
 		logger: logger,
 		models: data.NewModels(db),
 		wg:     sync.WaitGroup{},
+		mailer: mailer,
 	}
 
 	err = app.serve()
