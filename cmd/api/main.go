@@ -32,6 +32,7 @@ type config struct {
 		username string
 		password string
 	}
+	stalenessInterval time.Duration
 }
 
 type application struct {
@@ -86,6 +87,8 @@ func main() {
 	flag.IntVar(&cfg.mailer.port, "mailer-port", 587, "Mailer port")
 	flag.StringVar(&cfg.mailer.username, "mailer-username", os.Getenv("MAILER_USERNAME"), "Mailer username")
 	flag.StringVar(&cfg.mailer.password, "mailer-password", os.Getenv("MAILER_PASSWORD"), "Mailer password")
+
+	flag.DurationVar(&cfg.stalenessInterval, "staleness-interval", 6*time.Hour, "Interval for running staleness worker")
 
 	displayVersion := flag.Bool("version", false, "Display version and exit")
 
