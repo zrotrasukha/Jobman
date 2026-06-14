@@ -34,7 +34,6 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	err = user.Password.Set(input.Password)
-	app.logger.Info("password set", "password", user.Password.Hash)
 	if err != nil {
 		app.serverErrResponse(w, r, err)
 		return
@@ -57,6 +56,17 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
+
+	templateData := map[string]any{"Name": user.Name}
+	app.background(func() {
+		app.logger.Info("attempting to send welcome email", "recipient", user.Email)
+		err := app.mailer.Send(user.Email, "welcome.tmpl", templateData)
+		if err != nil {
+			app.logger.Error("unable to send welcome email", "error", err)
+			return
+		}
+		app.logger.Info("welcome email sent successfully", "recipient", user.Email)
+	})
 
 	err = app.writeJSON(w, http.StatusCreated, envelop{"user": user}, nil)
 	if err != nil {
