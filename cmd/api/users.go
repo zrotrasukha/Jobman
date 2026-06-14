@@ -2,7 +2,9 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/zrotrasukha/jobman/internal/data"
 	"github.com/zrotrasukha/jobman/internal/validator"
@@ -57,10 +59,21 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	templateData := map[string]any{"Name": user.Name}
+	token, err := app.models.Token.New(user.Id, 3*24*time.Hour, data.ScopeActivation)
+	if err != nil {
+		app.serverErrResponse(w, r, err)
+		return
+	}
+	fmt.Println("token created successfully:", token.Plaintext)
+
 	app.background(func() {
-		app.logger.Info("attempting to send welcome email", "recipient", user.Email)
-		err := app.mailer.Send(user.Email, "welcome.tmpl", templateData)
+		templateData := map[string]any{
+			"Name":            user.Name,
+			"UserID":          user.Id,
+			"ActivationToken": token.Plaintext,
+		}
+		app.logger.Info("attempting to send registration email", "recipient", user.Email)
+		err := app.mailer.Send(user.Email, "registerUser.tmpl", templateData)
 		if err != nil {
 			app.logger.Error("unable to send welcome email", "error", err)
 			return
