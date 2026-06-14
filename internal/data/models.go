@@ -15,6 +15,7 @@ var (
 type Models struct {
 	Application JobApplicationModelInterface
 	User        UserModelInterface
+	Token       TokenModelInterface
 }
 
 // NewModels initializes and returns a Models struct with all DB repositories.
@@ -22,5 +23,6 @@ func NewModels(pool *pgxpool.Pool) Models {
 	return Models{
 		Application: JobApplicationModel{pool: pool},
 		User:        UserModel{pool: pool},
+		Token:       TokenModel{pool: pool},
 	}
 }
