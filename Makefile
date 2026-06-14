@@ -38,6 +38,11 @@ db/migration/up: confirm
 .PHONY: db/migration/down
 db/migration/down:
 	@migrate -database $$DSN -path ./migrations/ down ${steps}
+
+## db/migration/force v=$1: force the migration version to the given version
+.PHONY: db/migration/force
+db/migration/force:
+	@migrate -database $$DSN -path ./migrations/ force ${v}
 # ================================================================================== #
 # BUILD
 # ================================================================================== #
