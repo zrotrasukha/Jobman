@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"embed"
 	"html/template"
+	"time"
 
 	"github.com/wneessen/go-mail"
 )
 
 //go:embed templates
-var emailTemp embed.FS
+var emailTemp embed.FS // mail templates
 
 type Mailer struct {
 	Dialer *mail.Client
@@ -21,6 +22,7 @@ func New(host string, port int, username string, password string, sender string)
 		mail.WithPort(port),
 		mail.WithUsername(username),
 		mail.WithPassword(password),
+		mail.WithSMTPAuth(mail.SMTPAuthPlain),
 	)
 	if err != nil {
 		return nil, err
@@ -32,26 +34,26 @@ func New(host string, port int, username string, password string, sender string)
 	}, nil
 }
 
-func (m *Mailer) Send(recipient string, sender string, data any) error {
-	t, err := template.New("email").ParseFS(emailTemp, "templates/email.html")
+func (m *Mailer) Send(recipient string, filename string, data any) error {
+	t, err := template.New("email").ParseFS(emailTemp, "templates/"+filename)
 	if err != nil {
 		return err
 	}
 
 	var subject bytes.Buffer
-	err = t.ExecuteTemplate(&subject, "subject", nil)
+	err = t.ExecuteTemplate(&subject, "subject", data)
 	if err != nil {
 		return err
 	}
 
 	var htmlBody bytes.Buffer
-	err = t.ExecuteTemplate(&htmlBody, "html", nil)
+	err = t.ExecuteTemplate(&htmlBody, "htmlBody", data)
 	if err != nil {
 		return err
 	}
 
 	var textBody bytes.Buffer
-	err = t.ExecuteTemplate(&textBody, "text", nil)
+	err = t.ExecuteTemplate(&textBody, "plainBody", data)
 	if err != nil {
 		return err
 	}
@@ -62,7 +64,7 @@ func (m *Mailer) Send(recipient string, sender string, data any) error {
 		return err
 	}
 
-	err = msg.From(sender)
+	err = msg.From(m.Sender)
 	if err != nil {
 		return err
 	}
@@ -71,10 +73,14 @@ func (m *Mailer) Send(recipient string, sender string, data any) error {
 	msg.SetBodyString(mail.TypeTextHTML, htmlBody.String())
 	msg.AddAlternativeString(mail.TypeTextPlain, textBody.String())
 
-	err = m.Dialer.DialAndSend(msg)
-	if err != nil {
-		return err
+	for range 3 {
+		err = m.Dialer.DialAndSend(msg)
+		if err == nil {
+			return nil
+		}
+
+		time.Sleep(time.Millisecond * 200)
 	}
 
-	return nil
+	return err
 }
