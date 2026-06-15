@@ -2,10 +2,12 @@ package data
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"time"
 
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zrotrasukha/jobman/internal/validator"
@@ -83,6 +85,8 @@ func ValidateUser(v *validator.Validator, user *User) {
 
 type UserModelInterface interface {
 	Insert(user *User) error
+	Update(user *User) error
+	GetForToken(tokenString string, tokenScope string) (*User, error)
 }
 
 type UserModel struct {
@@ -176,4 +180,39 @@ func (m UserModel) Delete(id int64) error {
 	}
 
 	return nil
+}
+
+func (m UserModel) GetForToken(tokenString string, tokenScope string) (*User, error) {
+	hash := sha256.Sum256([]byte(tokenString))
+	query := `SELECT users.id, users.created_at, users.name, users.email, users.password_hash, users.activated, users.version
+						FROM users 
+						INNER JOIN tokens ON users.id = tokens.users_id
+						WHERE tokens.hash = $1 AND tokens.scope = $2 AND tokens.expiry > $3`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	args := []any{hash[:], tokenScope, time.Now()}
+
+	var user User
+	err := m.pool.QueryRow(ctx, query, args...).Scan(
+		&user.Id,
+		&user.CreatedAt,
+		&user.Name,
+		&user.Email,
+		&user.Password.Hash,
+		&user.Activated,
+		&user.Version,
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return &user, nil
 }
