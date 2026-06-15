@@ -63,7 +63,7 @@ func (m TokenModel) Insert(token *Token) error {
 }
 
 func (m TokenModel) DeleteAllforUser(userID int64, scope string) error {
-	query := `DELETE FROM tokens WHERE user_id = $1 AND scope = $2`
+	query := `DELETE FROM tokens WHERE users_id = $1 AND scope = $2`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
