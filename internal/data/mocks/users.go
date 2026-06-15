@@ -5,7 +5,9 @@ import (
 )
 
 type MockUserModel struct {
-	InsertFunc func(user *data.User) error
+	InsertFunc      func(user *data.User) error
+	UpdateFunc      func(user *data.User) error
+	GetForTokenFunc func(tokenScope, tokenPlaintext string) (*data.User, error)
 }
 
 func (m MockUserModel) Insert(user *data.User) error {
@@ -18,4 +20,17 @@ func (m MockUserModel) Insert(user *data.User) error {
 	user.Email = "test@user.com"
 	user.CreatedAt = FixedDate
 	return nil
+}
+
+func (m MockUserModel) Update(user *data.User) error {
+	return nil
+}
+
+func (m MockUserModel) GetForToken(tokenScope, tokenPlaintext string) (*data.User, error) {
+	return &data.User{
+		Id:        1,
+		Name:      "Test User",
+		Email:     "test@gmai.com",
+		CreatedAt: FixedDate,
+	}, nil
 }
