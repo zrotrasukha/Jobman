@@ -87,6 +87,7 @@ type UserModelInterface interface {
 	Insert(user *User) error
 	Update(user *User) error
 	GetForToken(tokenString string, tokenScope string) (*User, error)
+	GetByEmail(email string) (*User, error)
 }
 
 type UserModel struct {
@@ -137,7 +138,12 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 	)
 
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
 	}
 
 	return &user, nil
