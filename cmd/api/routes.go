@@ -20,6 +20,7 @@ func (app *application) routes() http.Handler {
 
 	mux.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
 	mux.HandlerFunc(http.MethodPut, "/v1/tokens/authentication", app.activateUserHandler)
+	mux.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.CreateAuthenticationTokenHandler)
 
 	return app.recoverPanic(app.reqLogger(mux))
 }
