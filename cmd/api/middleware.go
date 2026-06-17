@@ -1,8 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"strings"
+
+	"github.com/zrotrasukha/jobman/internal/data"
+	"github.com/zrotrasukha/jobman/internal/validator"
 )
 
 // reqLogger middleware is use to log the incoming HTTP requests. It logs the HTTP method and the URL of each request when it starts processing.
@@ -23,6 +28,48 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 			}
 		}()
 
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Header.Add("Vary", "Authorization")
+
+		authorizationHeader := r.Header.Get("Authorization")
+
+		if authorizationHeader == "" {
+			r = app.ContextSetUser(r, data.AnonymousUser)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		headParts := strings.Split(authorizationHeader, " ")
+		if len(headParts) != 2 || headParts[0] != "Bearer" {
+			app.invalidAuthenticationTokenResponse(w, r)
+			return
+		}
+
+		token := headParts[1]
+
+		v := validator.New()
+		if data.ValidateTokenPlainText(v, token); !v.Valid() {
+			app.invalidAuthenticationTokenResponse(w, r)
+			return
+		}
+
+		user, err := app.models.User.GetForToken(token, data.ScopeAuthentication)
+		if err != nil {
+			switch {
+			case errors.Is(err, data.ErrRecordNotFound):
+				app.invalidAuthenticationTokenResponse(w, r)
+			default:
+				app.serverErrResponse(w, r, err)
+			}
+			return
+		}
+
+		r = app.ContextSetUser(r, user)
 		next.ServeHTTP(w, r)
 	})
 }
