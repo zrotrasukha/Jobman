@@ -73,3 +73,58 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+func (app *application) requireAuthenticatedUser(next http.HandlerFunc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := app.ContextGetUser(r)
+
+		if user.IsAnonymous() {
+			app.authenticationRequired(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) requireActivatedUser(next http.HandlerFunc) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		user := app.ContextGetUser(r)
+
+		if !user.Activated {
+			app.inactiveAccountResponse(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+
+	return app.requireAuthenticatedUser(http.HandlerFunc(fn))
+}
+
+func (app *application) requireApplicationOwner(next http.HandlerFunc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := app.ContextGetUser(r)
+		id, err := app.readParamID(r)
+		if err != nil {
+			app.badRequestResponse(w, r, err)
+			return
+		}
+
+		jobApp, err := app.models.Application.Get(id, user.Id)
+		if err != nil {
+			switch {
+			case errors.Is(err, data.ErrRecordNotFound):
+				app.notFoundResponse(w, r)
+			default:
+				app.serverErrResponse(w, r, err)
+			}
+			return
+		}
+
+		r = app.ContextSetApplication(r, jobApp)
+
+		next.ServeHTTP(w, r)
+	})
+
+}
