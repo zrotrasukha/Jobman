@@ -32,6 +32,7 @@ func (m MockUserModel) GetForToken(tokenScope, tokenPlaintext string) (*data.Use
 		Id:        1,
 		Name:      "Test User",
 		Email:     "test@gmai.com",
+		Activated: true,
 		CreatedAt: FixedDate,
 	}, nil
 }
