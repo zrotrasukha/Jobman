@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/justinas/alice"
 )
 
 // routes sets up the router and a http.Handler.
@@ -11,16 +12,23 @@ func (app *application) routes() http.Handler {
 	mux := httprouter.New()
 	mux.NotFound = http.HandlerFunc(app.notFoundResponse)
 
-	mux.HandlerFunc(http.MethodGet, "/v1/healthcheck", app.healthcheckHandler)
-	mux.HandlerFunc(http.MethodPost, "/v1/applications", app.CreateApplicationHandler)
-	mux.HandlerFunc(http.MethodGet, "/v1/applications", app.ListApplicationHandler)
-	mux.HandlerFunc(http.MethodGet, "/v1/applications/:id", app.GetApplicationHandler)
-	mux.HandlerFunc(http.MethodPatch, "/v1/applications/:id", app.UpdateApplicationHandler)
-	mux.HandlerFunc(http.MethodDelete, "/v1/applications/:id", app.DeleteApplicationHandler)
+	activatedUserChain := alice.New(app.authenticate, func(next http.Handler) http.Handler {
+		return app.requireActivatedUser(next.ServeHTTP)
+	})
+
+	ownerRequiredChain := activatedUserChain.Append(app.requireApplicationOwner)
+
+	mux.Handler(http.MethodGet, "/v1/healthcheck", activatedUserChain.ThenFunc(app.healthcheckHandler))
+	mux.Handler(http.MethodGet, "/v1/applications", activatedUserChain.ThenFunc(app.ListApplicationHandler))
+	mux.Handler(http.MethodPost, "/v1/applications", activatedUserChain.ThenFunc(app.CreateApplicationHandler))
+
+	mux.Handler(http.MethodGet, "/v1/applications/:id", ownerRequiredChain.ThenFunc(app.GetApplicationHandler))
+	mux.Handler(http.MethodPatch, "/v1/applications/:id", ownerRequiredChain.ThenFunc(app.UpdateApplicationHandler))
+	mux.Handler(http.MethodDelete, "/v1/applications/:id", ownerRequiredChain.ThenFunc(app.DeleteApplicationHandler))
 
 	mux.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
-	mux.HandlerFunc(http.MethodPut, "/v1/tokens/authentication", app.activateUserHandler)
+	mux.HandlerFunc(http.MethodPut, "/v1/users/activated", app.activateUserHandler)
 	mux.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.CreateAuthenticationTokenHandler)
 
-	return app.recoverPanic(app.reqLogger(app.authenticate(mux)))
+	return app.recoverPanic(app.reqLogger(mux))
 }
