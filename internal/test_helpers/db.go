@@ -98,7 +98,7 @@ func NewTestPool() (*pgxpool.Pool, func()) {
 
 func TruncateTable(t *testing.T, pool *pgxpool.Pool, tableName string) {
 	t.Helper()
-	query := fmt.Sprintf(`TRUNCATE %s RESTART IDENTITY`, tableName)
+	query := fmt.Sprintf(`TRUNCATE %s RESTART IDENTITY CASCADE`, tableName)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
