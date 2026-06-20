@@ -27,11 +27,14 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
+	user := app.ContextGetUser(r)
+
 	var application = &data.JobApplication{
 		CompanyName: input.Company_name,
 		RoleTitle:   input.RoleTitle,
 		Status:      input.Status,
 		Notes:       input.Notes,
+		UserID:      user.Id,
 	}
 	v := validator.New()
 
@@ -103,7 +106,9 @@ func (app *application) ListApplicationHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	applications, metadata, err := app.models.Application.GetAll(input.Search, input.Filters)
+	user := app.ContextGetUser(r)
+
+	applications, metadata, err := app.models.Application.GetAll(input.Search, input.Filters, user.Id)
 	if err != nil {
 		app.serverErrResponse(w, r, err)
 		return
@@ -124,7 +129,9 @@ func (app *application) GetApplicationHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	application, err := app.models.Application.Get(id)
+	user := app.ContextGetUser(r)
+
+	application, err := app.models.Application.Get(id, user.Id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -153,7 +160,9 @@ func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.
 	}
 	app.logger.Info("Updating application with ID", "id", id)
 
-	application, err := app.models.Application.Get(id)
+	user := app.ContextGetUser(r)
+
+	application, err := app.models.Application.Get(id, user.Id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -236,7 +245,7 @@ func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	err = app.models.Application.Update(application)
+	err = app.models.Application.Update(application, user.Id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -262,7 +271,9 @@ func (app *application) DeleteApplicationHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	err = app.models.Application.Delete(id)
+	user := app.ContextGetUser(r)
+
+	err = app.models.Application.Delete(id, user.Id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
