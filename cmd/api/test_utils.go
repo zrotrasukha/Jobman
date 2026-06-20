@@ -39,7 +39,13 @@ func newTestServer(t *testing.T, model data.Models) *testServer {
 
 // ts.Get() will send a GET request to the test server with the given url path, and return the status code and response body.
 func (ts *testServer) Get(t *testing.T, urlPath string) (int, string) {
-	rs, err := ts.Client().Get(ts.URL + urlPath)
+	req, err := http.NewRequest(http.MethodGet, ts.URL+urlPath, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	rs, err := ts.Client().Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +64,14 @@ func (ts *testServer) Get(t *testing.T, urlPath string) (int, string) {
 func (ts *testServer) Post(t *testing.T, urlPath string, body string) (int, http.Header, string) {
 	url := ts.URL + urlPath
 	buf := bytes.NewBufferString(body)
-	rs, err := ts.Client().Post(url, "application/json", buf)
+	req, err := http.NewRequest(http.MethodPost, url, buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	rs, err := ts.Client().Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
