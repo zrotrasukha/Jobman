@@ -11,10 +11,10 @@ var FixedDate = time.Date(2026, 8, 12, 11, 45, 0, 0, time.UTC)
 
 type MockJobApplicationModel struct {
 	InsertFunc                func(jobApp *data.JobApplication) error
-	GETFunc                   func(id int64) (*data.JobApplication, error)
-	GetAllFunc                func(searchString string, filters data.Filters) ([]*data.JobApplication, *data.Metadata, error)
-	UpdateFunc                func(jobApp *data.JobApplication) error
-	DeleteFunc                func(id int64) error
+	GETFunc                   func(id int64, userID int64) (*data.JobApplication, error)
+	GetAllFunc                func(searchString string, filters data.Filters, userID int64) ([]*data.JobApplication, *data.Metadata, error)
+	UpdateFunc                func(jobApp *data.JobApplication, userID int64) error
+	DeleteFunc                func(id int64, userID int64) error
 	MarkStaleApplicationsFunc func(ctx context.Context) (int64, error)
 }
 
@@ -34,9 +34,9 @@ func (m MockJobApplicationModel) Insert(jobApp *data.JobApplication) error {
 	return nil
 }
 
-func (m MockJobApplicationModel) Get(id int64) (*data.JobApplication, error) {
+func (m MockJobApplicationModel) Get(id int64, userID int64) (*data.JobApplication, error) {
 	if m.GETFunc != nil {
-		return m.GETFunc(id)
+		return m.GETFunc(id, userID)
 	}
 	if id == 1 {
 		return &data.JobApplication{
@@ -54,9 +54,9 @@ func (m MockJobApplicationModel) Get(id int64) (*data.JobApplication, error) {
 	return nil, data.ErrRecordNotFound
 }
 
-func (m MockJobApplicationModel) GetAll(searchString string, filters data.Filters) ([]*data.JobApplication, *data.Metadata, error) {
+func (m MockJobApplicationModel) GetAll(searchString string, filters data.Filters, userID int64) ([]*data.JobApplication, *data.Metadata, error) {
 	if m.GetAllFunc != nil {
-		return m.GetAllFunc(searchString, filters)
+		return m.GetAllFunc(searchString, filters, userID)
 	}
 	jobApps := []*data.JobApplication{
 		{
@@ -90,18 +90,18 @@ func (m MockJobApplicationModel) GetAll(searchString string, filters data.Filter
 	return jobApps, metadata, nil
 }
 
-func (m MockJobApplicationModel) Update(jobApp *data.JobApplication) error {
+func (m MockJobApplicationModel) Update(jobApp *data.JobApplication, userID int64) error {
 	if m.UpdateFunc != nil {
-		return m.UpdateFunc(jobApp)
+		return m.UpdateFunc(jobApp, userID)
 	}
 	jobApp.UpdatedAt = FixedDate
 	jobApp.Version++
 	return nil
 }
 
-func (m MockJobApplicationModel) Delete(id int64) error {
+func (m MockJobApplicationModel) Delete(id int64, userID int64) error {
 	if m.DeleteFunc != nil {
-		return m.DeleteFunc(id)
+		return m.DeleteFunc(id, userID)
 	}
 	if id == 1 {
 		return nil

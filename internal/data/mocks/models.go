@@ -6,5 +6,6 @@ func NewMockModels() data.Models {
 	return data.Models{
 		Application: MockJobApplicationModel{},
 		User:        MockUserModel{},
+		Token:       MockTokenModel{},
 	}
 }

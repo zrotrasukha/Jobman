@@ -13,7 +13,7 @@ import (
 )
 
 func TestHealthcheck(t *testing.T) {
-	ts := newTestServer(t, data.Models{})
+	ts := newTestServer(t, mocks.NewMockModels())
 	app := newTestApplication()
 
 	expected := envelop{
@@ -255,7 +255,7 @@ func TestGetApplicationHandler(t *testing.T) {
 			id:       "999",
 			wantCode: http.StatusNotFound,
 			mockApplicationModel: mocks.MockJobApplicationModel{
-				GETFunc: func(id int64) (*data.JobApplication, error) {
+				GETFunc: func(id int64, userID int64) (*data.JobApplication, error) {
 					return nil, data.ErrRecordNotFound
 				},
 			},
@@ -266,7 +266,7 @@ func TestGetApplicationHandler(t *testing.T) {
 			id:       "1",
 			wantCode: http.StatusInternalServerError,
 			mockApplicationModel: mocks.MockJobApplicationModel{
-				GETFunc: func(id int64) (*data.JobApplication, error) {
+				GETFunc: func(id int64, userID int64) (*data.JobApplication, error) {
 					return nil, errors.New("db fails to load")
 				},
 			},
@@ -302,7 +302,7 @@ func TestListApplicationHandler(t *testing.T) {
 			url:      "/v1/applications?page=0",
 			wantCode: http.StatusUnprocessableEntity,
 			mockApplicationModel: mocks.MockJobApplicationModel{
-				GetAllFunc: func(searchString string, filters data.Filters) ([]*data.JobApplication, *data.Metadata, error) {
+				GetAllFunc: func(searchString string, filters data.Filters, userID int64) ([]*data.JobApplication, *data.Metadata, error) {
 					t.Fatal("GetAll should not be called if validation fails!")
 					return nil, nil, nil
 				},
@@ -314,7 +314,7 @@ func TestListApplicationHandler(t *testing.T) {
 			url:      "/v1/applications?page_size=999",
 			wantCode: http.StatusUnprocessableEntity,
 			mockApplicationModel: mocks.MockJobApplicationModel{
-				GetAllFunc: func(searchString string, filters data.Filters) ([]*data.JobApplication, *data.Metadata, error) {
+				GetAllFunc: func(searchString string, filters data.Filters, userID int64) ([]*data.JobApplication, *data.Metadata, error) {
 					t.Fatal("GetAll should not be called if validation fails!")
 					return nil, nil, nil
 				},
@@ -326,7 +326,7 @@ func TestListApplicationHandler(t *testing.T) {
 			url:      "/v1/applications?sort=drop_table_users",
 			wantCode: http.StatusUnprocessableEntity,
 			mockApplicationModel: mocks.MockJobApplicationModel{
-				GetAllFunc: func(searchString string, filters data.Filters) ([]*data.JobApplication, *data.Metadata, error) {
+				GetAllFunc: func(searchString string, filters data.Filters, userID int64) ([]*data.JobApplication, *data.Metadata, error) {
 					t.Fatal("GetAll should not be called if validation fails!")
 					return nil, nil, nil
 				},
@@ -338,7 +338,7 @@ func TestListApplicationHandler(t *testing.T) {
 			url:      "/v1/applications",
 			wantCode: http.StatusInternalServerError,
 			mockApplicationModel: mocks.MockJobApplicationModel{
-				GetAllFunc: func(searchString string, filters data.Filters) ([]*data.JobApplication, *data.Metadata, error) {
+				GetAllFunc: func(searchString string, filters data.Filters, userID int64) ([]*data.JobApplication, *data.Metadata, error) {
 					return nil, nil, errors.New("database connection completely fried")
 				},
 			},
