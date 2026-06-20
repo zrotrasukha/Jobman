@@ -56,3 +56,13 @@ func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter
 	message := "invalid or expired authentication token"
 	app.errorResponse(w, r, http.StatusUnauthorized, message)
 }
+
+func (app *application) authenticationRequired(w http.ResponseWriter, r *http.Request) {
+	message := "You must be authenticated to access this resource"
+	app.errorResponse(w, r, http.StatusUnauthorized, message)
+}
+
+func (app *application) inactiveAccountResponse(w http.ResponseWriter, r *http.Request) {
+	message := "Your account must be activated to access this resource"
+	app.errorResponse(w, r, http.StatusForbidden, message)
+}
