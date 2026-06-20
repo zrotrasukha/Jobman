@@ -74,7 +74,7 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 	})
 }
 
-func (app *application) requireAuthenticatedUser(next http.HandlerFunc) http.Handler {
+func (app *application) requireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := app.ContextGetUser(r)
 
@@ -87,7 +87,7 @@ func (app *application) requireAuthenticatedUser(next http.HandlerFunc) http.Han
 	})
 }
 
-func (app *application) requireActivatedUser(next http.HandlerFunc) http.Handler {
+func (app *application) requireActivatedUser(next http.HandlerFunc) http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		user := app.ContextGetUser(r)
 
@@ -99,10 +99,10 @@ func (app *application) requireActivatedUser(next http.HandlerFunc) http.Handler
 		next.ServeHTTP(w, r)
 	}
 
-	return app.requireAuthenticatedUser(http.HandlerFunc(fn))
+	return app.requireAuthenticatedUser(fn)
 }
 
-func (app *application) requireApplicationOwner(next http.HandlerFunc) http.Handler {
+func (app *application) requireApplicationOwner(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := app.ContextGetUser(r)
 		id, err := app.readParamID(r)
