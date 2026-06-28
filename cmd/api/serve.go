@@ -57,7 +57,13 @@ func (app *application) serve() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		return srv.Shutdown(ctx)
+		err := srv.Shutdown(ctx)
+		if err != nil {
+			return err
+		}
+
+		app.logger.Info("closing cache connection")
+		return app.cache.Close()
 	})
 
 	if err := g.Wait(); err != nil {
