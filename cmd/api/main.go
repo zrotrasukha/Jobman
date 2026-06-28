@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/zrotrasukha/jobman/internal/cache"
 	"github.com/zrotrasukha/jobman/internal/data"
 	"github.com/zrotrasukha/jobman/internal/mailer"
 )
@@ -32,6 +33,12 @@ type config struct {
 		username string
 		password string
 	}
+	cache struct {
+		Addr     string
+		Password string
+		DB       int
+		Timeout  time.Duration
+	}
 	stalenessInterval time.Duration
 }
 
@@ -41,6 +48,7 @@ type application struct {
 	models data.Models
 	wg     sync.WaitGroup
 	mailer *mailer.Mailer
+	cache  *cache.Cache
 }
 
 // openDB establishes a connection pool to the PostgreSQL database using the provided configuration. It sets the maximum number of open connections, minimum number of idle connections, and maximum idle time for the connections in the pool. The function also performs a ping to the database to ensure that the connection is valid before returning the pool. If any errors occur during this process, they are returned to the caller.
@@ -90,6 +98,10 @@ func main() {
 
 	flag.DurationVar(&cfg.stalenessInterval, "staleness-interval", 6*time.Hour, "Interval for running staleness worker")
 
+	flag.StringVar(&cfg.cache.Addr, "cache-addr", os.Getenv("CACHE_ADDR"), "Cache address")
+	flag.StringVar(&cfg.cache.Password, "cache-password", os.Getenv("CACHE_PASSWORD"), "Cache password")
+	flag.IntVar(&cfg.cache.DB, "cache-db", 0, "Cache database number")
+
 	displayVersion := flag.Bool("version", false, "Display version and exit")
 
 	flag.Parse()
@@ -114,12 +126,15 @@ func main() {
 	}
 	logger.Info("mailer initialized")
 
+	cache := cache.NewCache(cfg.cache.Addr, cfg.cache.Password, cfg.cache.DB)
+
 	app := &application{
 		config: cfg,
 		logger: logger,
 		models: data.NewModels(db),
 		wg:     sync.WaitGroup{},
 		mailer: mailer,
+		cache:  cache,
 	}
 
 	err = app.serve()
