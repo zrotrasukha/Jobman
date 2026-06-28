@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/zrotrasukha/jobman/internal/cache"
 	"github.com/zrotrasukha/jobman/internal/data"
 	"github.com/zrotrasukha/jobman/internal/validator"
 )
@@ -58,7 +61,22 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		user, err := app.models.User.GetForToken(token, data.ScopeAuthentication)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		// cache hit/miss
+		user, err := app.cache.GetUserForToken(ctx, token)
+		if err == nil {
+			r = app.ContextSetUser(r, user)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		if errors.Is(err, cache.ErrCacheMiss) {
+			app.logger.Warn("Cache miss for token", "token", token)
+		}
+
+		user, err = app.models.User.GetForToken(token, data.ScopeAuthentication)
 		if err != nil {
 			switch {
 			case errors.Is(err, data.ErrRecordNotFound):
@@ -66,7 +84,15 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 			default:
 				app.serverErrResponse(w, r, err)
 			}
+			next.ServeHTTP(w, r)
 			return
+		}
+
+		if user.Activated {
+			err = app.cache.SetUserForToken(ctx, token, user, 60*time.Minute)
+			if err != nil {
+				app.logger.Error("Failed to set user for token in cache", "token", token, "error", err)
+			}
 		}
 
 		r = app.ContextSetUser(r, user)
