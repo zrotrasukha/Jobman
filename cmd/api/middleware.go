@@ -64,16 +64,21 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		// cache hit/miss
-		user, err := app.cache.GetUserForToken(ctx, token)
-		if err == nil {
-			r = app.ContextSetUser(r, user)
-			next.ServeHTTP(w, r)
-			return
-		}
+		var user *data.User
+		var err error
 
-		if errors.Is(err, cache.ErrCacheMiss) {
-			app.logger.Warn("Cache miss for token", "token", token)
+		// guardrail for cache nil, as cache is not expected in tests,
+		if app.cache != nil {
+			user, err = app.cache.GetUserForToken(ctx, token)
+			if err == nil {
+				r = app.ContextSetUser(r, user)
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if errors.Is(err, cache.ErrCacheMiss) {
+				app.logger.Warn("Cache miss for token", "token", token)
+			}
 		}
 
 		user, err = app.models.User.GetForToken(token, data.ScopeAuthentication)
@@ -88,7 +93,7 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		if user.Activated {
+		if app.cache != nil && user.Activated {
 			err = app.cache.SetUserForToken(ctx, token, user, 60*time.Minute)
 			if err != nil {
 				app.logger.Error("Failed to set user for token in cache", "token", token, "error", err)
