@@ -151,3 +151,36 @@ func (app *application) background(fn func()) {
 		fn()
 	})
 }
+
+// currentWeekWindow returns the start (Monday 00:00:00) and end (Sunday 23:59:59) of the ISO week containing the given time.
+func (app *application) currentWeekWindow(t time.Time) (time.Time, time.Time) {
+	wd := t.Weekday()
+
+	var daysSinceMonday int
+	if wd == time.Sunday {
+		daysSinceMonday = 6
+	} else {
+		daysSinceMonday = int(wd) - 1
+	}
+
+	from := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location()).AddDate(0, 0, -daysSinceMonday)
+	to := from.AddDate(0, 0, 6).Add(23*time.Hour + 59*time.Minute + 59*time.Second + 999999999*time.Nanosecond)
+
+	return from, to
+}
+
+// currentMonthWindow returns the start (first day of the month at 00:00:00) and end (last day of the month at 23:59:59) of the month containing the given time.
+func (app *application) currentMonthWindow(t time.Time) (time.Time, time.Time) {
+	from := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
+	to := from.AddDate(0, 1, 0).Add(-time.Nanosecond)
+
+	return from, to
+}
+
+// currentYearWindow returns the start (January 1st at 00:00:00) and end (December 31st at 23:59:59) of the year containing the given time.
+func (app *application) currentYearWindow(t time.Time) (time.Time, time.Time) {
+	from := time.Date(t.Year(), 1, 1, 0, 0, 0, 0, t.Location())
+	to := from.AddDate(1, 0, 0).Add(-time.Nanosecond)
+
+	return from, to
+}
