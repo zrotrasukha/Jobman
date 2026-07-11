@@ -13,12 +13,15 @@ import (
 // Handler for creating a new job application
 func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Company_name string      `json:"company_name"`
-		RoleTitle    string      `json:"role_title"`
-		AppliedAt    string      `json:"applied_at"`
-		InterviewAt  string      `json:"interview_at"`
-		Status       data.Status `json:"status"`
-		Notes        string      `json:"notes"`
+		UsersID           int64       `json:"users_id"`
+		Company_name      string      `json:"company_name"`
+		RoleTitle         string      `json:"role_title"`
+		AppliedAt         string      `json:"applied_at"`
+		LastCommunication string      `json:"last_communication"`
+		InterviewAt       string      `json:"interview_at"`
+		Status            data.Status `json:"status"`
+		StaleAfter        string      `json:"stale_after"`
+		Notes             string      `json:"notes"`
 	}
 
 	err := app.readJSON(w, r, &input)
@@ -29,21 +32,41 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 
 	user := app.ContextGetUser(r)
 
+	// Use input.UsersID if provided, otherwise default to the authenticated user.Id
+	// this logic exists to allow admin users to create applications for other users
+	// but regular users can only create applications for themselves.
+	// I might get rid of this logic in future
+	userID := user.Id
+	if input.UsersID != 0 {
+		userID = input.UsersID
+	}
+
 	var application = &data.JobApplication{
 		CompanyName: input.Company_name,
 		RoleTitle:   input.RoleTitle,
 		Status:      input.Status,
 		Notes:       input.Notes,
-		UserID:      user.Id,
+		UserID:      userID,
 	}
 	v := validator.New()
 
+	// if applied_at is provided, parse it and set it to the application.AppliedAt field. If not provided, set it to the current time.
 	if input.AppliedAt != "" {
 		t, err := time.Parse(time.RFC3339, input.AppliedAt)
 		if err != nil {
 			v.AddError("applied_at", "must be a valid RFC3339 date")
 		} else {
 			application.AppliedAt = t
+		}
+	}
+
+	// same as applied_at
+	if input.LastCommunication != "" {
+		t, err := time.Parse(time.RFC3339, input.LastCommunication)
+		if err != nil {
+			v.AddError("last_communication", "must be a valid RFC3339 date")
+		} else {
+			application.LastCommunication = &t
 		}
 	}
 
@@ -61,6 +84,15 @@ func (app *application) CreateApplicationHandler(w http.ResponseWriter, r *http.
 		if !application.AppliedAt.IsZero() {
 			gracePeriod := application.AppliedAt.Add(30 * 24 * time.Hour)
 			application.StaleAfter = &gracePeriod
+		}
+	}
+
+	if input.StaleAfter != "" {
+		t, err := time.Parse(time.RFC3339, input.StaleAfter)
+		if err != nil {
+			v.AddError("stale_after", "must be a valid RFC3339 date")
+		} else {
+			application.StaleAfter = &t
 		}
 	}
 
@@ -175,10 +207,11 @@ func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.
 	}
 
 	var input struct {
+		UsersID           *int64       `json:"users_id"`
 		Company_name      *string      `json:"company_name"`
 		RoleTitle         *string      `json:"role_title"`
 		AppliedAt         *string      `json:"applied_at"`
-		Interview_at      *string      `json:"interview_at"`
+		InterviewAt       *string      `json:"interview_at"`
 		LastCommunication *string      `json:"last_communication"`
 		Status            *data.Status `json:"status"`
 		Notes             *string      `json:"notes"`
@@ -188,6 +221,10 @@ func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.
 	if err != nil {
 		app.badRequestResponse(w, r, err)
 		return
+	}
+
+	if input.UsersID != nil {
+		application.UserID = *input.UsersID
 	}
 
 	if input.Company_name != nil {
@@ -224,8 +261,8 @@ func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.
 		application.LastCommunication = &t
 	}
 
-	if input.Interview_at != nil {
-		t, err := time.Parse(time.RFC3339, *input.Interview_at)
+	if input.InterviewAt != nil {
+		t, err := time.Parse(time.RFC3339, *input.InterviewAt)
 		if err != nil {
 			app.badRequestResponse(w, r, fmt.Errorf("invalid interview_at value: %w", err))
 			return
@@ -233,7 +270,7 @@ func (app *application) UpdateApplicationHandler(w http.ResponseWriter, r *http.
 		application.InterviewAt = &t
 	}
 
-	if input.Interview_at != nil {
+	if input.InterviewAt != nil {
 		gracePeriod := application.InterviewAt.Add(5 * 24 * time.Hour)
 		application.StaleAfter = &gracePeriod
 	}
