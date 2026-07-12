@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/zrotrasukha/jobman/internal/assert"
@@ -183,4 +184,46 @@ func TestReadParamID(t *testing.T) {
 		})
 	}
 
+}
+
+func TestCurrentWeekWindow(t *testing.T) {
+	app := newTestApplication()
+
+	tests := []struct {
+		name     string
+		input    time.Time
+		wantFrom time.Time
+		wantTo   time.Time
+	}{
+		{
+			name:     "Tuesday in middle of week",
+			input:    time.Date(2026, 7, 7, 10, 30, 0, 0, time.UTC), // Tuesday
+			wantFrom: time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC),  // Monday
+			wantTo:   time.Date(2026, 7, 12, 23, 59, 59, 999999999, time.UTC), // Sunday
+		},
+		{
+			name:     "Monday (start of week)",
+			input:    time.Date(2026, 7, 6, 8, 0, 0, 0, time.UTC),
+			wantFrom: time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC),
+			wantTo:   time.Date(2026, 7, 12, 23, 59, 59, 999999999, time.UTC),
+		},
+		{
+			name:     "Sunday (end of week)",
+			input:    time.Date(2026, 7, 12, 23, 0, 0, 0, time.UTC),
+			wantFrom: time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC),
+			wantTo:   time.Date(2026, 7, 12, 23, 59, 59, 999999999, time.UTC),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotFrom, gotTo := app.currentWeekWindow(tt.input)
+			if !gotFrom.Equal(tt.wantFrom) {
+				t.Errorf("gotFrom = %v; want %v", gotFrom, tt.wantFrom)
+			}
+			if !gotTo.Equal(tt.wantTo) {
+				t.Errorf("gotTo = %v; want %v", gotTo, tt.wantTo)
+			}
+		})
+	}
 }
