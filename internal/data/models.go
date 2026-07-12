@@ -17,6 +17,7 @@ type Models struct {
 	User        UserModelInterface
 	Token       TokenModelInterface
 	Reminder    ReminderModelInterface
+	Digest      DigestModelInterface
 }
 
 // NewModels initializes and returns a Models struct with all DB repositories.
@@ -26,5 +27,6 @@ func NewModels(pool *pgxpool.Pool) Models {
 		User:        UserModel{pool: pool},
 		Token:       TokenModel{pool: pool},
 		Reminder:    ReminderModel{pool: pool},
+		Digest:      DigestModel{pool: pool},
 	}
 }
