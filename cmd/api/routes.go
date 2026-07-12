@@ -27,6 +27,7 @@ func (app *application) routes() http.Handler {
 	mux.Handler(http.MethodDelete, "/v1/applications/:id", ownerRequiredChain.ThenFunc(app.DeleteApplicationHandler))
 
 	mux.Handler(http.MethodGet, "/v1/reminders", activatedUserChain.ThenFunc(app.ListRemindersHandler))
+	mux.Handler(http.MethodGet, "/v1/digest", activatedUserChain.ThenFunc(app.ListDigestHandler))
 
 	mux.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
 	mux.HandlerFunc(http.MethodPut, "/v1/users/activated", app.activateUserHandler)
