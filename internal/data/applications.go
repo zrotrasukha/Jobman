@@ -277,6 +277,8 @@ func ValidateJobApplication(v *validator.Validator, jobApp *JobApplication) {
 	// same shit for the stale_after field
 	v.CheckField(jobApp.StaleAfter == nil || jobApp.StaleAfter.After(jobApp.AppliedAt), "stale_after", "must be after the applied date")
 
+	v.CheckField(jobApp.LastCommunication == nil || jobApp.LastCommunication.After(jobApp.AppliedAt), "last_communication", "must be after the applied date")
+
 	// if the status is interviewing, then the interview_at field must be provided
 	v.CheckField(
 		jobApp.Status != StatusInterviewing || jobApp.InterviewAt != nil,
