@@ -8,5 +8,6 @@ func NewMockModels() data.Models {
 		User:        MockUserModel{},
 		Token:       MockTokenModel{},
 		Reminder:    MockReminderModel{},
+		Digest:      MockDigestModel{},
 	}
 }
