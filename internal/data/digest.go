@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -37,6 +38,9 @@ type Funnel struct {
 	Replied      int `json:"replied"`
 	Interviewing int `json:"interviewing"`
 	Offered      int `json:"offered"`
+	RoundCleared int `json:"round_cleared"`
+	Selected     int `json:"selected"`
+	Declined     int `json:"declined"`
 	Rejected     int `json:"rejected"`
 	Ghosted      int `json:"ghosted"`
 }
@@ -139,6 +143,21 @@ func (m DigestModel) GetFunnel(ctx context.Context, tx pgx.Tx, userId int64, fro
 		return nil, err
 	}
 
+	err = tx.QueryRow(ctx, transitionQuery, userId, StatusRoundCleared, from, to).Scan(&funnel.RoundCleared)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.QueryRow(ctx, transitionQuery, userId, StatusSelected, from, to).Scan(&funnel.Selected)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.QueryRow(ctx, transitionQuery, userId, StatusDeclined, from, to).Scan(&funnel.Declined)
+	if err != nil {
+		return nil, err
+	}
+
 	return &funnel, nil
 }
 
@@ -157,22 +176,22 @@ type GhostCohort struct {
 
 func (m DigestModel) GetGhostCohort(ctx context.Context, tx pgx.Tx, userId int64) (*GhostCohort, error) {
 	query := `SELECT
-								COUNT(*) FILTER (
-										WHERE
-												status IN ('Rejected', 'Offered', 'Ghosted')
-												OR (
-														stale_after IS NOT NULL
-														AND stale_after < NOW()
-												)
-								) AS matured,
-								COUNT(*) FILTER (
-										WHERE
-												status = 'Ghosted' -- Removed the dangling 'AND'
-								) AS matured_ghosted -- Removed the trailing comma
-						FROM
-								applications
+				COUNT(*) FILTER (
 						WHERE
-								users_id = $1;`
+								status IN ('Rejected', 'Offered', 'Ghosted', 'Selected', 'Declined')
+								OR (
+										stale_after IS NOT NULL
+										AND stale_after < NOW()
+								)
+				) AS matured,
+				COUNT(*) FILTER (
+						WHERE
+								status = 'Ghosted'
+				) AS matured_ghosted
+						FROM
+				applications
+						WHERE
+				users_id = $1;`
 
 	var cohort GhostCohort
 	err := tx.QueryRow(ctx, query, userId).Scan(&cohort.Matured, &cohort.MaturedGhosted)
@@ -181,7 +200,8 @@ func (m DigestModel) GetGhostCohort(ctx context.Context, tx pgx.Tx, userId int64
 	}
 
 	if cohort.Matured > 0 {
-		rate := Rate(float64(cohort.MaturedGhosted) / float64(cohort.Matured) * 100)
+		raw := float64(cohort.MaturedGhosted) / float64(cohort.Matured) * 100
+		rate := Rate(math.Round(raw*100) / 100)
 		cohort.Rate = &rate
 	}
 
