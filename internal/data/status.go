@@ -12,6 +12,9 @@ const (
 	StatusApplied      = "Applied"
 	StatusInterviewing = "Interviewing"
 	StatusOffered      = "Offered"
+	StatusRoundCleared = "RoundCleared" // repeatable, mid-process
+	StatusSelected     = "Selected"     // earned via full pipeline
+	StatusDeclined     = "Declined"     // user said no to offer 
 	StatusRejected     = "Rejected"
 	StatusGhosted      = "Ghosted"
 )
@@ -19,7 +22,7 @@ const (
 // IsValid returns true if the status matches a predefined valid value.
 func (s Status) IsValid() bool {
 	switch s {
-	case StatusApplied, StatusInterviewing, StatusOffered, StatusRejected, StatusGhosted:
+	case StatusApplied, StatusInterviewing, StatusOffered, StatusRejected, StatusGhosted, StatusRoundCleared, StatusSelected, StatusDeclined:
 		return true
 	default:
 		return false
