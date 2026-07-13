@@ -247,7 +247,7 @@ func (m JobApplicationModel) MarkStaleApplications(ctx context.Context) (int64, 
 	query := `UPDATE applications
 						SET status = 'Ghosted'
 						WHERE stale_after < NOW()
-						AND status IN ('Applied', 'Interviewing')`
+						AND status IN ('Applied', 'Interviewing', 'RoundCleared')`
 
 	result, err := m.pool.Exec(ctx, query)
 	if err != nil {
