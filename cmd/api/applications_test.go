@@ -214,6 +214,108 @@ func TestCreateApplicationHandler(t *testing.T) {
                 }
             }`,
 		},
+		{
+			name: "valid input with RoundCleared status",
+			input: `{
+				"company_name": "StatusTest Corp",
+				"role_title": "Test Role",
+				"status": "RoundCleared",
+				"applied_at": "2026-08-12T11:45:00Z",
+				"notes": "Cleared the first round"
+			}`,
+			mockApplicationsModel: mocks.MockJobApplicationModel{
+				InsertFunc: func(jobApp *data.JobApplication) error {
+					jobApp.ID = 1
+					jobApp.Version = 1
+					return nil
+				},
+			},
+			wantHeader: true,
+			wantStatus: http.StatusCreated,
+			wantBody: `{
+				"application": {
+					"id": 1,
+					"company_name": "StatusTest Corp",
+					"role_title": "Test Role",
+					"status": "RoundCleared",
+					"applied_at": "2026-08-12T11:45:00Z",
+					"updated_at": "0001-01-01T00:00:00Z",
+					"interview_at": null,
+					"stale_after": "2026-09-11T11:45:00Z",
+					"last_communication": null,
+					"notes": "Cleared the first round",
+					"version": 1
+				}
+			}`,
+		},
+		{
+			name: "valid input with Selected status",
+			input: `{
+				"company_name": "StatusTest Corp",
+				"role_title": "Test Role",
+				"status": "Selected",
+				"applied_at": "2026-08-12T11:45:00Z",
+				"notes": "Got selected"
+			}`,
+			mockApplicationsModel: mocks.MockJobApplicationModel{
+				InsertFunc: func(jobApp *data.JobApplication) error {
+					jobApp.ID = 1
+					jobApp.Version = 1
+					return nil
+				},
+			},
+			wantHeader: true,
+			wantStatus: http.StatusCreated,
+			wantBody: `{
+				"application": {
+					"id": 1,
+					"company_name": "StatusTest Corp",
+					"role_title": "Test Role",
+					"status": "Selected",
+					"applied_at": "2026-08-12T11:45:00Z",
+					"updated_at": "0001-01-01T00:00:00Z",
+					"interview_at": null,
+					"stale_after": "2026-09-11T11:45:00Z",
+					"last_communication": null,
+					"notes": "Got selected",
+					"version": 1
+				}
+			}`,
+		},
+		{
+			name: "valid input with Declined status",
+			input: `{
+				"company_name": "StatusTest Corp",
+				"role_title": "Test Role",
+				"status": "Declined",
+				"applied_at": "2026-08-12T11:45:00Z",
+				"notes": "Declined the offer"
+			}`,
+			mockApplicationsModel: mocks.MockJobApplicationModel{
+				InsertFunc: func(jobApp *data.JobApplication) error {
+					jobApp.ID = 1
+					jobApp.Version = 1
+					return nil
+				},
+			},
+			wantHeader: true,
+			wantStatus: http.StatusCreated,
+			wantBody: `{
+				"application": {
+					"id": 1,
+					"company_name": "StatusTest Corp",
+					"role_title": "Test Role",
+					"status": "Declined",
+					"applied_at": "2026-08-12T11:45:00Z",
+					"updated_at": "0001-01-01T00:00:00Z",
+					"interview_at": null,
+					"stale_after": "2026-09-11T11:45:00Z",
+					"last_communication": null,
+					"notes": "Declined the offer",
+					"version": 1
+				}
+			}`,
+		},
 	}
 
 	for _, tt := range tests {
