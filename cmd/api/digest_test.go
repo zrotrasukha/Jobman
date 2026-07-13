@@ -29,15 +29,17 @@ func TestListDigestHandler(t *testing.T) {
 					Replied      int `json:"replied"`
 					Interviewing int `json:"interviewing"`
 					Offered      int `json:"offered"`
+					RoundCleared int `json:"round_cleared"`
+					Selected     int `json:"selected"`
+					Declined     int `json:"declined"`
 					Rejected     int `json:"rejected"`
 					Ghosted      int `json:"ghosted"`
 				} `json:"funnel"`
 				GhostCohort struct {
 					Matured        int       `json:"matured"`
 					MaturedGhosted int       `json:"matured_ghosted"`
-					Pending        int       `json:"pending"`
 					Rate           data.Rate `json:"rate"`
-				} `json:"ghost_cohort"`
+				} `json:"all_time_ghost_cohort"`
 			} `json:"digest"`
 		}
 
@@ -54,9 +56,11 @@ func TestListDigestHandler(t *testing.T) {
 		assert.Equal(t, resp.Digest.Funnel.Offered, 1)
 		assert.Equal(t, resp.Digest.Funnel.Rejected, 4)
 		assert.Equal(t, resp.Digest.Funnel.Ghosted, 12)
+		assert.Equal(t, resp.Digest.Funnel.RoundCleared, 2)
+		assert.Equal(t, resp.Digest.Funnel.Selected, 1)
+		assert.Equal(t, resp.Digest.Funnel.Declined, 1)
 		assert.Equal(t, resp.Digest.GhostCohort.Matured, 20)
 		assert.Equal(t, resp.Digest.GhostCohort.MaturedGhosted, 5)
-		assert.Equal(t, resp.Digest.GhostCohort.Pending, 10)
 		assert.Equal(t, resp.Digest.GhostCohort.Rate, data.Rate(25.0))
 	})
 
